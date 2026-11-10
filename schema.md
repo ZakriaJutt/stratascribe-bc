@@ -127,7 +127,7 @@ Sens. M. Uniqueness is scoped to the brokerage: two brokerages may both hold "ZZ
 |---|---|---|---|---|
 | id | uuid | no | — | PK |
 | brokerage_id, strata_id | uuid | no | — | Composite FK |
-| user_id | uuid | no | — | FK users; a trigger checks the user's brokerage equals `brokerage_id` |
+| user_id | uuid | no | — | Composite FK `(user_id, brokerage_id)` to `users (id, brokerage_id)`, so the user's brokerage must equal `brokerage_id` (B1: declarative FK instead of the trigger first proposed) |
 | assigned_by | uuid | no | — | FK users |
 | assigned_at | timestamptz | no | now() | — |
 | revoked_at, revoked_by | timestamptz, uuid | yes | — | Never deleted; history is the audit trail |
@@ -172,7 +172,7 @@ Unique `(strata_id, meeting_type, held_on, sequence)`: creating a second meeting
 | attested_at | timestamptz | no | now() | — |
 | superseded_by | uuid | yes | — | Self-reference; rows are never updated otherwise |
 
-Append-only (no UPDATE except `superseded_by`; no DELETE grant). Sens. M. A typed `bylaw_reference_text` is enough to open the upload gate, but **approval is refused** while the current authorization has basis `bylaw` and `bylaw_clause_id` is null or points to a clause of an unconfirmed document (checked in the approval transaction; test I-23). Linking the clause later creates a superseding row.
+Append-only (no UPDATE except `superseded_by`, enforced by trigger; no DELETE). At most one current row per meeting: partial unique index on `meeting_id WHERE superseded_by IS NULL`; the `superseded_by` foreign key is DEFERRABLE INITIALLY DEFERRED so the old row is pointed at the new one before the new row is inserted (B1). `bylaw_clause_id` has a composite FK with `strata_id`, so it can only name a clause of the same building. Sens. M. A typed `bylaw_reference_text` is enough to open the upload gate, but **approval is refused** while the current authorization has basis `bylaw` and `bylaw_clause_id` is null or points to a clause of an unconfirmed document (checked in the approval transaction; test I-23). Linking the clause later creates a superseding row.
 
 ### audio_assets
 
@@ -182,7 +182,8 @@ Append-only (no UPDATE except `superseded_by`; no DELETE grant). Sens. M. A type
 | brokerage_id, strata_id, meeting_id | uuid | no | — | — |
 | part_number | integer | no | 1 | Order within the meeting |
 | storage_key | text | no | — | `b/{brokerage_id}/s/{strata_id}/audio/{id}`; UNIQUE |
-| sha256 | bytea | no | — | UNIQUE (meeting_id, sha256): same file twice in one meeting is rejected |
+| sha256 | bytea | no | — | Declared by the client at upload start, verified at completion. UNIQUE (meeting_id, sha256): the same file twice in one meeting returns the first asset (I-3) |
+| received_bytes | bigint | no | 0 | Bytes stored so far under `tmp/`; a resumed upload continues from here (I-2). Added in B1 |
 | byte_size | bigint | no | — | — |
 | duration_seconds | integer | yes | — | Set by the worker |
 | upload_state | text | no | 'receiving' | receiving, complete, failed |
@@ -197,7 +198,8 @@ Sens. **H**.
 | Field | Type | Null | Default | Notes |
 |---|---|---|---|---|
 | id | uuid | no | — | PK |
-| brokerage_id, strata_id | uuid | no | — | Tenant context for the worker |
+| brokerage_id, strata_id | uuid | yes | — | Tenant context for the worker. CHECK: not null except for the system kinds `retention_sweep` and `reconcile` (B1) |
+| max_attempts, run_after | integer, timestamptz | no | 3, now() | Retry budget and backoff (B1) |
 | meeting_id / bylaw_document_id | uuid | yes | — | One is set, by kind |
 | kind | text | no | — | transcribe, draft_minutes, index_bylaws, export, retention_sweep, reconcile |
 | idempotency_key | text | no | — | UNIQUE (kind, idempotency_key) |
@@ -262,7 +264,7 @@ A trigger rejects any UPDATE to an approved version or its items, with one excep
 | sensitive_flag | boolean | no | false | Owner named in an arrears or contravention item |
 | deleted_at, delete_reason | timestamptz, text | yes | — | Soft delete so the correction history stays intact |
 
-CHECK: when `item_type = 'motion'` and `review_status = 'reviewed'`, then `final_outcome` is not null and either (a) `outcome_method = 'declared'` with `declared_outcome`, `outcome_attested_by` and `outcome_attested_at` not null, or (b) `outcome_method = 'counted'` with `threshold`, `votes_for`, `votes_against` not null and `computed_result` in ('carried','defeated'), or `computed_result = 'tie'` with `casting_vote` not null. A second CHECK: if `declared_outcome` and `computed_result` are both set and differ, `discrepancy_resolution` is not null. Counts are never required for a declared motion. Sens. **H**.
+CHECK: when `item_type = 'motion'` and `review_status = 'reviewed'`, then `final_outcome` is not null and either (a) `outcome_method = 'declared'` with `declared_outcome`, `outcome_attested_by` and `outcome_attested_at` not null, or (b) `outcome_method = 'counted'` with `threshold`, `votes_for`, `votes_against` not null and `computed_result` in ('carried','defeated'), or `computed_result = 'tie'` with `casting_vote` not null. For a reviewed counted motion with a declared outcome, the declared outcome must equal the counted outcome (computed result after any casting vote) or `discrepancy_resolution = 'recorded_as_declared'` (B1 change: the earlier wording "if `declared_outcome` and `computed_result` differ, `discrepancy_resolution` is not null" applied to every row, which made the blocked state the TRD requires unstorable, and compared against `tie` rather than the outcome after the casting vote). `recorded_as_declared` requires a non-blank `discrepancy_note` (CHECK). `casting_vote` is allowed only when `computed_result = 'tie'`; a declared motion has no `computed_result`. `rules_version` (text, null) stores the rules version used for the computed result, added in B1 per "Provenance" below. `final_outcome` is a stored generated column. Counts are never required for a declared motion. Sens. **H**.
 
 ### minute_item_citations
 
@@ -328,7 +330,7 @@ Partial unique index `(strata_id, kind) WHERE status = 'current'`: one current b
 
 ### bylaw_clauses
 
-`id`, `brokerage_id`, `strata_id`, `bylaw_document_id`, `clause_number` text ("3(4)(b)"), `heading` text null, `body_text` text, `page_from`, `page_to` integer, `position` integer, `embedding vector(1024)` null, `embedding_model_id` text, `edited_by` null. Unique `(bylaw_document_id, position)`. Sens. L–M. The vector dimension depends on the embedding model chosen in T-4.1.1 and is a placeholder.
+`id`, `brokerage_id`, `strata_id`, `bylaw_document_id`, `clause_number` text ("3(4)(b)"), `heading` text null, `body_text` text, `page_from`, `page_to` integer, `position` integer, `embedding vector(1024)` null, `embedding_model_id` text, `edited_by` null. Unique `(bylaw_document_id, position)`. Sens. L–M. The vector dimension depends on the embedding model chosen in T-4.1.1 and is a placeholder. **B1 gap:** pgvector is not available on the PostgreSQL 16 used for B1, so `embedding` (and the HNSW index) is not created; clause search runs behind `ai.search.ClauseSearch` with a full-text implementation filtered by building and current document in the query.
 
 ### statute_sections (global, not tenant-owned)
 
@@ -370,7 +372,7 @@ Append-only: the application role has INSERT and SELECT only. Sens. M. Kept 7 ye
 
 ### idempotency_keys, backfill_progress, worker_heartbeats
 
-`idempotency_keys`: `key` text, `user_id` uuid, `route` text, `response_hash` bytea, `created_at`; PK `(user_id, route, key)`; rows deleted after 24 hours.
+`idempotency_keys`: `key` text, `user_id` uuid, `route` text, `request_hash` text, `status_code` integer, `response_body` jsonb, `created_at`; PK `(user_id, route, key)`; rows deleted after 24 hours (deletion job not built in B1). B1 change: the first response is stored, not only its hash, because a repeated key must return the first result; a repeated key with a different body is refused (422). RLS: visible only to `user_id = app.user_id`.
 
 `backfill_progress`: `name` text PK, `last_id` uuid null, `done` boolean default false, `last_job_id` uuid null (the `jobs` row that last advanced it), `updated_at`. Not tenant-owned; written by backfill jobs only.
 
@@ -407,7 +409,7 @@ Database roles (proposed):
 |---|---|---|
 | `app_user` | API and workers, acting for a user or a building-scoped service actor | DML on tenant tables **through row-level security**; INSERT/SELECT on append-only tables; no DDL; not the table owner; no `BYPASSRLS` |
 | `app_migrator` | Migrations only | DDL; owner of tables |
-| `app_system` | Retention sweep, reconciler, backup | Narrow rights: `jobs`, `audio_assets.delete_after/deleted_at`, deletions listed in a `deletion_requests` row; cannot read `transcript_segments.text`, `minute_items`, `qa_interactions` |
+| `app_system` | Retention sweep, reconciler, backup | Narrow rights: `jobs`, `audio_assets.delete_after/deleted_at`, deletions listed in a `deletion_requests` row; cannot read `transcript_segments.text`, `minute_items`, `qa_interactions`. **B1:** not a separate database role yet; the system context is `app_user` with `app.role = 'system'`, which policies admit only to `jobs` (all) and `audio_assets` (read, update) plus audit inserts. A separate role is a proposal for T-6.1 |
 | `app_operator_ro` | Operator requests **without** a grant (`/operator/jobs`) | Views over `jobs` and counts only; no content columns. Operator requests **under a support grant** do not use this role: they use `app_user` with `app.role = 'operator'` and `app.support_grant_id` set, so the same row-level security applies |
 
 Row-level security is enabled and **forced** on every tenant table. Policies, in words:
@@ -484,10 +486,22 @@ All periods are proposals `[A]` configurable per brokerage within the stated bou
 
 **Backups and restore.** Backups are encrypted and expire after 35 days. A restore re-introduces data deleted since the backup; therefore the restore runbook replays, before the service is opened: (1) all `deletion_requests` completed after the backup time, from a small deletion ledger stored separately from the main backup, and (2) the retention sweep. An individual's access request under `[S: PIPA]` s. 23 is answered by the brokerage or strata corporation from the building export; the product offers no name search (a non-goal in the PRD).
 
+## B1 implementation notes (2026-11-11)
+
+Built in B1 and covered by tests listed in `verification-report-fixing.md` "B1 build record":
+
+- **Roles.** Local role names are `stratascribe_app` (the `app_user` of this file: NOSUPERUSER, NOBYPASSRLS, owns nothing) and the OS superuser as migration owner (the `app_migrator` stand-in). Every tenant table has row-level security ENABLED and FORCED.
+- **Session variables.** `app.brokerage_id`, `app.user_id`, `app.role` (`managing_broker`, `strata_manager`, `service`, `system`, `operator`), `app.strata_id` (service actor), `app.operator_id`, `app.support_grant_id`, set with `set_config(…, true)` per transaction by `core.db.session_for`.
+- **Building policy** is the SQL function `app_can_see_building(strata_id)`; operator reads use `app_grant_meeting()` on `meetings`, `transcripts`, `transcript_segments` (through `transcripts`), `minutes_versions` and `minute_items` (through `minutes_versions`).
+- **403 versus 404.** Two narrow SECURITY DEFINER functions: `app_locate(kind, id)` returns a row's building only when the row is in the caller's brokerage (no content), and `app_record_foreign_denial(…)` writes an `access.denied` row into the owning brokerage's audit log for a cross-brokerage attempt (P-2). Trigger helper functions that read a parent row's status are also SECURITY DEFINER and return a status only.
+- **Composite foreign keys** `(child_id, strata_id)` to `(parent.id, parent.strata_id)` on every building-owned child (meeting children, transcript segments, items, citations, corrections, clauses, Q&A citations), in addition to `(strata_id, brokerage_id)` to `strata_corporations`.
+- **Triggers:** `row_version` increment on mutable tables; append-only on `audit_events`, `corrections`, `approvals`; supersede-only on `recording_authorizations`; immutability of approved `minutes_versions` and their `minute_items`; item-citation check (same building via FK, current document, exact quote when given); Q&A citation check (current clause, exact substring); deferred "answered needs a validated citation" on `qa_interactions`; last active managing broker.
+- **Not created in B1:** `subscriptions`, `exports`, `deletion_requests`, `backfill_progress`; the `vector` extension and embedding columns; attendance-card fields for quorum (see the gap noted in `verification-report-fixing.md`).
+
 ## Migrations
 
 - **Tooling:** Alembic. One linear history; CI fails if there is more than one head (R-10). Every migration file name carries a timestamp and a short description; a merge that introduces a second head must be rebased, not merged with a "merge migration".
-- **Ordering for the first release:** (1) extensions (`citext`, `vector`); (2) `brokerages`, `users`, `operators`; (3) `strata_corporations`, `building_assignments`; (4) `meetings`, `recording_authorizations`, `audio_assets`, `jobs`; (5) transcripts; (6) minutes, items, corrections, approvals, exports, review sessions; (7) bylaws, clauses, statute sections; (8) questions and citations; (9) audit, baselines, time reports, item citations, deletion, support grants, operators, idempotency keys, backfill progress, worker heartbeats; (10) row-level security policies and role grants; (11) indexes.
+- **Ordering for the first release:** (1) extensions (`citext`, `vector`; B1: `citext`, `pgcrypto`, `pg_trgm`, no `vector`); (2) `brokerages`, `users`, `operators`; (3) `strata_corporations`, `building_assignments`; (4) `meetings`, `recording_authorizations`, `audio_assets`, `jobs`; (5) transcripts; (6) minutes, items, corrections, approvals, exports, review sessions; (7) bylaws, clauses, statute sections; (8) questions and citations; (9) audit, baselines, time reports, item citations, deletion, support grants, operators, idempotency keys, backfill progress, worker heartbeats; (10) row-level security policies and role grants; (11) indexes.
 - **ORM parity (R-08):** indexes, unique constraints and CHECK constraints are declared in the SQLAlchemy models. CI creates one database from the migrations and one from the models' metadata and compares them; any difference fails the build. Row-level security policies and triggers, which the ORM cannot express, live only in migrations and are covered by a test that lists expected policies per table.
 - **Lock management (R-11):** indexes on existing tables are created with `CREATE INDEX CONCURRENTLY` in their own non-transactional migration; `lock_timeout` is set to 5 seconds for every migration so a blocked DDL fails fast instead of queueing behind live queries; new NOT NULL columns are added as nullable, backfilled, then constrained with `NOT VALID` + `VALIDATE`.
 - **Backfills (R-09):** run as jobs, not inside migrations, in batches of 1,000 rows `[A]`, keyed by primary key, with progress stored in a `backfill_progress` row so an interrupted backfill resumes where it stopped and can be run twice safely.

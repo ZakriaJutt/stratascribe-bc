@@ -2,7 +2,7 @@
 
 **Question this file answers:** what passed, what failed, and what remains untested?
 
-This repository contains planning documents only. No application, script, migration, test or environment exists. Every application check below is planned and marked **Not run**. A planned control is not evidence of compliance.
+Until 2026-11-11 this repository held planning documents only. Build milestone B1 (foundation and deterministic core) was then implemented on branch `feat/b1-foundation`; what ran, with commands and results, is in [B1 build record](#b1-build-record-2026-11-11). Every check not listed there as run stays **Not run**. A planned control is not evidence of compliance.
 
 IDs: must-haves `MH-01`–`MH-13` ([PRD.md](PRD.md#must-haves)); screens `S-01`–`S-17` ([App-flow.md](App-flow.md#screen-and-route-inventory)); tasks `T-…` and tests `U-`, `I-`, `E-`, `P-`, `C-`, `G-`, `V-`, `A-`, `H-` ([execution-plan.md](execution-plan.md#planned-tests)); risks `R-01`–`R-22` (this file); review findings `F-001…` (this file).
 
@@ -33,25 +33,25 @@ Not checked by the author: Git state, remote, privacy and commit (the lead's job
 
 | Area | Planned tests | Status |
 |---|---|---|
-| Counted-vote rules | U-1 to U-6 | Not run |
-| Declared outcomes, discrepancy, ties, quorum variants, council rules | U-10 to U-15 | Not run |
-| Citation validator, storage keys, log redaction | U-7, U-8, U-9 | Not run |
-| Single writer of computed results; renderer fetches nothing | U-16, U-17 | Not run |
-| Authority gate and upload | I-1, I-2, I-3, I-23, I-24 | Not run |
-| Job ordering and timeouts | I-4, I-5 | Not run |
-| Approval immutability | I-6 | Not run |
-| Cited answers and refusal; citations on minute items | I-7, I-8, I-16 | Not run |
-| Retention and deletion, including temporary uploads | I-9, I-10, I-22 | Not run |
-| Default-deny at the database | I-11 | Not run |
+| Counted-vote rules | U-1 to U-6 | B1: ran, pass |
+| Declared outcomes, discrepancy, ties, quorum variants, council rules | U-10 to U-15 | B1: ran, pass |
+| Citation validator, storage keys, log redaction | U-7, U-8, U-9 | B1: ran, pass (U-7 with a fake model) |
+| Single writer of computed results; renderer fetches nothing | U-16, U-17 | B1: U-16 pass; U-17 Not run |
+| Authority gate and upload | I-1, I-2, I-3, I-23, I-24 | B1: I-1, I-2, I-3, I-23 pass; I-24 partial |
+| Job ordering and timeouts | I-4, I-5 | B1: ran, pass |
+| Approval immutability | I-6 | B1: ran, pass |
+| Cited answers and refusal; citations on minute items | I-7, I-8, I-16 | B1: ran, pass (fake model) |
+| Retention and deletion, including temporary uploads | I-9, I-10, I-22 | B1: I-9, I-22 pass; I-10 Not run |
+| Default-deny at the database | I-11 | B1: ran, pass |
 | Partial failure in batch upload | I-12 | Not run |
-| Time measurement and pilot report | I-13, I-14, I-15 | Not run |
-| Sign-in, sessions, request forgery, rate limits | I-17, I-18, I-19, I-20 | Not run |
-| Configuration drift between API and worker | I-21 | Not run |
-| Read events in the audit log | I-25 | Not run |
+| Time measurement and pilot report | I-13, I-14, I-15 | B1: I-14, I-15 pass; I-13 server side only |
+| Sign-in, sessions, request forgery, rate limits | I-17, I-18, I-19, I-20 | B1: I-19 pass; others Not run |
+| Configuration drift between API and worker | I-21 | B1: ran, pass |
+| Read events in the audit log | I-25 | B1: partial (no export event) |
 | End-to-end workflows | E-1 to E-5 | Not run |
-| Building and brokerage isolation, operator path, managing broker as manager | P-1 to P-6 | Not run |
-| Concurrency | C-1 to C-4 | Not run |
-| Migrations | G-1 to G-4 | Not run |
+| Building and brokerage isolation, operator path, managing broker as manager | P-1 to P-6 | B1: ran, pass (P-4 database level only) |
+| Concurrency | C-1 to C-4 | B1: C-1, C-2, C-3 pass; C-4 Not run |
+| Migrations | G-1 to G-4 | B1: G-1, G-2 partial; G-3, G-4 Not run |
 | Recovery and networking | V-1 to V-4 | Not run |
 | Accessibility | A-1 to A-11, mapped to criteria in [design.md](design.md#accessibility) | Not run |
 | Human review | H-1, H-2 | Not run |
@@ -155,26 +155,136 @@ Issues the author found and fixed while cross-checking the ten files before the 
 | SC-12 | Decision.md | The month-5 worked example used a rounded subscriber count and did not sum to the table value | Recomputed from 1.28625 subscribers; matches 880.90 |
 | SC-13 | execution-plan.md, Decision.md | New controls from the review raised the build estimate; the old totals (167–263 hours) would have been stale | Totals recomputed from the task rows by script: 180–280 hours build; Decision §7.1 updated |
 
+## B1 build record (2026-11-11)
+
+**Authorisation.** On 2026-11-11 the owner authorised implementation in all ten repositories at once, **before this product's Phase 0 sales gate passed** (no T-0.4.2 memo, no paid pilot). The decision text in `Decision.md` is unchanged. Everything below ran on the developer's machine against synthetic data only (Harbourline, Tidewater, ZZS 9001/9002/9101, Priya, Daniel, Marta, Omar are invented). Transcription and the language model are deterministic fakes; no provider, account or key was used.
+
+**Environment.** Python 3.12.13 virtual environment `tools/.venv`; PostgreSQL 16.15 at localhost:5432, databases `stratascribe_dev` and `stratascribe_test`, application role `stratascribe_app` (NOSUPERUSER, NOBYPASSRLS, owns nothing); Redis db 5; API port 8106. pgvector, Docker, ClamAV are not available.
+
+**Commands and results (final run, clean database).**
+
+| Command | What it does | Result |
+|---|---|---|
+| `make test` | Drops and re-creates the `stratascribe_test` schema, runs migrations 0001-0003 from zero, then `pytest` over `tests/` | **92 passed, 0 failed** (8.4 s) |
+| `make lint` | ruff (pyflakes, pycodestyle, isort, bugbear, bandit subset) over `packages`, `apps`, `tests` | All checks passed |
+| `make typecheck` | mypy `--strict` over `packages`, `apps` | No issues in 51 source files |
+| `make check-migrations` | Exactly one Alembic head | Pass (head `0003`) |
+| `make seed` then `make dev` | Seeds the dev database; starts worker and API directly; polls `/readyz` | `/readyz` ready: database, configuration (API and worker fingerprints equal), Redis, storage all `ok` |
+
+The TRD names no linter or type checker; ruff and mypy were chosen for B1.
+
+**Tasks implemented** (task IDs from `execution-plan.md`; "partial" names what is missing):
+
+| Task | B1 scope |
+|---|---|
+| T-2.1.1 | Done for Python: `apps/api`, `apps/worker`, `packages/core`, `rules`, `ai`, `docs`; boundary checks as tests (U-16, imports, single config loader, no raw sessions). `apps/web` not created (optional, frontend out of B1 scope) |
+| T-2.1.2 | Partial: `make dev`, `make test`, `make seed`, health and readiness. Compose not built (Docker unavailable); "stop the database → not ready within 30 s" not run (shared PostgreSQL service must not be stopped) |
+| T-2.1.3 | Partial: single-head and ORM-parity checks run as tests. **Blocked:** the CI workflow and branch protection need GitHub Actions on a pushed branch; pushing is the lead's step |
+| T-2.1.4 | Done |
+| T-2.2.1 | Done (all B1 tables; RLS enabled and forced; grants; policy-listing test) |
+| T-2.2.2 | Partial: server-side sessions with idle and absolute expiry, deactivation check per request, custom-header and Origin check. Magic link, authenticator, invitations and rate limits not built |
+| T-2.2.3 | Done except the operator sign-in route, `support.accessed` events and the repeated-denial alert. Grant-scoped operator reads are enforced and tested at the database |
+| T-2.2.4 | Done |
+| T-2.2.5 | Not built |
+| T-3.1.1 | Done (meeting creation with same-day confirmation, authority record with notice version, gate, supersede, "not recorded") |
+| T-3.1.2 | Partial: resumable upload by offset, `core.storage.key`, checksum, duplicate detection, type by magic bytes, size and part limits. Malware scan, DOCX archive limits and "remove or replace a part" not built |
+| T-3.1.3 | Done |
+| T-3.2.1 | **Blocked:** real Whisper transcription and timing need the production host (AD-4). `ai.transcription.Transcriber` with a fake |
+| T-3.2.2 | Partial: schema-validated extraction, evidence segment IDs, invalid-twice fallback, with a fake model. **Blocked:** `make eval` and real-model scores need AD-5 and the T-1.1.1 recorded fixtures |
+| T-3.2.3 | Done, rules version `rules-2026.11.1`. Quorum is computed and tested but not persisted (see finding below) |
+| T-3.3.1 | Partial (server side): item edits with `If-Match`, one correction per changed field, declared/counted methods, tie and casting vote, discrepancy resolutions, add/delete items, citations on items, activity heartbeat |
+| T-3.3.2 | Partial: approval with server re-check, authority-evidenced check, content hash, immutability trigger, reopen, idempotent approve. Word/PDF export and watermark not built |
+| T-4.1.1 | Partial: plain-text bylaws, clause splitter, confirm and supersede. PDF/DOCX, scanned-file detection, embeddings not built (pgvector unavailable) |
+| T-4.1.2 | **Blocked:** importing the Act, Regulation and Standard Bylaws needs the primary text opened and a second person's check |
+| T-4.2.1 | Partial: `ClauseSearch` interface with full-text implementation filtered by building and current document, exact-quote validator, refusal with closest passages. Eval on 30 questions with a real model blocked by AD-5 |
+| T-5.1.1 | Partial: retention sweep for audio and abandoned uploads; `delete_after` at upload and approval. Transcript expiry, building/account deletion and export bundle not built |
+| T-5.1.2 | Partial: baselines, per-meeting time report, pilot report with every M-1 term and the matching rule, business-day function. CSV not built. **Blocked:** the BC holiday table must be taken from the BC government list (not looked up) |
+| T-5.1.3 | Partial: assignment and unassignment API with audit |
+| T-5.2.1 | Partial: permission matrix enumerating every `/api/v1` route with an ID from the application; direct SQL checks; file-link replay; worker scope |
+
+**Test results by ID.** Command for all: `make test`. "Pass" means the test ran in the final clean run and passed.
+
+| ID | Test (file::function) | Result |
+|---|---|---|
+| U-1, U-2, U-3, U-4, U-5, U-6 | `tests/unit/test_rules.py::test_u1_…` to `test_u6_…` | Pass |
+| U-7 | `tests/unit/test_ai_docs.py::test_u7_quote_one_character_off_is_rejected`; `tests/integration/test_bylaws_qa.py::test_u7_altered_quote_is_never_returned` | Pass |
+| U-8 | `tests/unit/test_static.py::test_u8_storage_keys_built_only_by_core_storage` | Pass |
+| U-9 | `tests/unit/test_logging_config.py::test_u9_text_and_email_are_redacted` | Pass |
+| U-10 to U-15 | `tests/unit/test_rules.py::test_u10_…` to `test_u15_council_votes` (U-15 quorum parametrised over 6 sizes) | Pass |
+| U-16 | `tests/unit/test_static.py::test_u16_only_rules_package_writes_computed_result` (clean tree passes; a seeded attribute write and a seeded SQL `SET` both fail and are named) | Pass |
+| U-17 | — | Not run (export not built) |
+| I-1 | `test_pipeline.py::test_i1_upload_refused_without_recording_authority` | Pass |
+| I-2 | `test_pipeline.py::test_i2_resume_after_drop_does_not_resend_finished_bytes` (200 KB synthetic file, not 200 MB) | Pass |
+| I-3 | `test_pipeline.py::test_i3_same_file_twice_is_one_asset` | Pass |
+| I-4 | `test_pipeline.py::test_i4_late_completion_does_not_change_state` | Pass |
+| I-5 | `test_pipeline.py::test_i5_process_twice_one_job_and_poll_shows_ready` | Pass |
+| I-6 | `test_pipeline.py::test_i6_c2_approval_immutable_and_idempotent` | Pass |
+| I-7 | `test_bylaws_qa.py::test_i7_answerable_questions_have_validated_citations` (20 synthetic questions, fake model) | Pass |
+| I-8 | `test_bylaws_qa.py::test_i8_unanswerable_questions_are_refused` (10 synthetic questions; bylaw set contains an injected instruction; fake model, so this proves the pipeline, not a real model's resistance) | Pass |
+| I-9 | `test_lifecycle_and_time.py::test_i9_sweep_deletes_expired_audio_and_is_safe_twice` | Pass |
+| I-10, I-12, I-17, I-18, I-20 | — | Not run (not built) |
+| I-11 | `test_isolation.py::test_i11_no_session_variables_reads_zero_rows` (every tenant table, as `stratascribe_app`) | Pass |
+| I-13 | `test_lifecycle_and_time.py::test_i13_server_side_activity_accounting` (scripted heartbeats: setup 120 s, review 360 s, second-tab heartbeat ignored) | Server side pass; the scripted **browser** session is Not run (no web app) |
+| I-14 | `test_lifecycle_and_time.py::test_i14_business_days_across_holiday` (test holiday table only) | Pass |
+| I-15 | `test_lifecycle_and_time.py::test_i15_pilot_report_equals_hand_calculation` (three meetings; hand figures in the test) | Pass |
+| I-16 | `test_bylaws_qa.py::test_i16_citation_corrections_on_items` | Pass |
+| I-19 | `test_pipeline.py::test_i19_forgery_defences` | Pass |
+| I-21 | `test_runtime.py::test_i21_config_fingerprint_matches_and_mismatch_is_not_ready` | Pass |
+| I-22 | `test_lifecycle_and_time.py::test_i22_abandoned_upload_parts_are_removed` | Pass |
+| I-23 | `test_pipeline.py::test_i23_bylaw_basis_needs_confirmed_clause_before_approval` | Pass |
+| I-24 | `test_pipeline.py::test_i24_partial_type_and_checksum_refusals` (renamed executable, 2.6 GB declared size, wrong extension, checksum) | Partial pass; DOCX expansion, DOCX entry count and EICAR Not run |
+| I-25 | `test_matrix.py::test_i25_read_events_have_no_content` (`meeting.opened`, `audio.streamed`, `transcript.read`) | Partial pass; `export.downloaded` Not run |
+| P-1 | `test_matrix.py::test_p1_unassigned_manager_gets_403_everywhere_including_files` (all 30 ID routes, including Daniel's audio-stream URL replayed with Priya's session) | Pass |
+| P-2 | `test_matrix.py::test_p2_other_brokerage_gets_404_and_owner_sees_the_attempt` | Pass |
+| P-3 | `test_matrix.py::test_p3_unassigned_while_editing` | Pass |
+| P-4 | `test_matrix.py::test_p4_operator_reads_only_granted_meeting_while_grant_is_live` (database level) | Partial pass; operator sign-in, operator routes and `support.accessed` Not run |
+| P-5 | `test_matrix.py::test_p5_worker_is_scoped_to_its_building` | Pass |
+| P-6 | `test_matrix.py::test_p6_managing_broker_acts_in_every_building_of_own_brokerage_only` | Pass |
+| C-1 | `test_pipeline.py::test_corrections_one_row_per_change_and_c1_conflict` | Pass |
+| C-2 | `test_pipeline.py::test_i6_c2_approval_immutable_and_idempotent`, `test_c2_concurrent_approvals_one_row` | Pass |
+| C-3 | `test_pipeline.py::test_c3_two_workers_never_lease_the_same_job` | Pass |
+| C-4 | — | Not run |
+| G-1 | `test_runtime.py::test_g1_single_migration_head` and `make check-migrations` | Partial pass: one head asserted; the two-branch merge scenario Not run |
+| G-2 | `test_runtime.py::test_g2_migrated_schema_matches_orm_metadata` (Alembic `compare_metadata`: no difference) | Partial pass; the seeded "index missing from migrations" case Not run |
+| G-3, G-4, V-1 to V-4, E-1 to E-5, A-1 to A-11, H-1, H-2 | — | Not run. E-2 and E-5 behaviour is exercised at API level by `test_u11_e2_three_quarter_fails_by_one_blocks_approval` and `test_u10_declared_motion_approvable_with_no_counts`; that is not an end-to-end run |
+
+Other tests that ran and passed: worker starts with FastAPI, Starlette and Uvicorn blocked from import (R-07); application role is not superuser and cannot bypass RLS, and RLS is enabled and forced on every tenant table; policy listing; append-only audit and recording authority; transition compare-and-set; retries then `failed_transcription` then retry; invalid model output twice gives an empty template; reviewing a motion without an outcome blocks; tie with casting vote and the database refusing an incomplete reviewed motion; two-lot strata tie defeated; add and delete items as corrections; reopen and supersede; idempotency keys; express-consent basis gated by the brokerage setting; superseded and unconfirmed bylaws are never cited; database refuses an answer without a valid citation; audio hard limit of 60 days at upload; range requests re-checked after unassignment; pilot report estimates listed apart and cross-type baselines.
+
+**Document changes made because implementation showed a document was wrong or incomplete** (each also edited in the file named):
+
+1. `schema.md` `minute_items`: the second CHECK ("declared and computed differ → resolution not null") applied to every row, which made the blocked state the TRD requires unstorable, and compared the declared outcome with `tie` rather than the outcome after the casting vote. Now enforced for reviewed motions only, against the counted outcome. Added `rules_version` to `minute_items` (the "Provenance" table already required it on the same row). No rule changed, so the rules version stays `rules-2026.11.1`.
+2. `schema.md` `idempotency_keys`: a response hash cannot "return the first result"; the first response is stored.
+3. `schema.md` `jobs`: `brokerage_id`/`strata_id` must be nullable for the system kinds `retention_sweep` and `reconcile`; added `max_attempts`, `run_after`. `audio_assets`: added `received_bytes` for resume.
+4. `schema.md` `building_assignments` and `recording_authorizations`: composite foreign keys instead of a trigger; deferred `superseded_by` with a "one current authorization" partial index. "B1 implementation notes" section added (roles, session variables, definer functions, triggers, what is not created).
+5. `TRD.md` §11 "B1 build notes": pgvector gap and `ClauseSearch`; Redis web sessions; plain-text bylaw upload; upload offset protocol; system context instead of an `app_system` role; the model's suggested method stays in `ai_suggestion` (stricter than "pre-selects a method").
+6. `AGENTS.md` and `CLAUDE.md` state lines, the utilities index and the list of commands that now exist.
+
+**Findings not resolved (need a decision; not decided silently).**
+
+- **Quorum has nowhere to be stored.** TRD says the quorum statement is computed from the attendance-card numbers the manager confirms, but `schema.md` has no attendance fields (present votes, eligible votes, members present, council size, declared-quorum attestation). `packages/rules` computes and tests every quorum rule (U-5, U-12, U-13, U-15); persisting it needs a schema proposal (for example quorum fields on the `quorum` item or a `meeting_attendance` table) and the matching S-10 update.
+- **Duplicate R-03 row** in the risk register below (pre-existing, two identical rows). Left for the reviewer; not changed.
+- The TRD sentence "the model's reading … only pre-selects a method" and CLAUDE.md "never let a model's reading become the outcome" can be read differently; B1 implements the stricter reading.
+
 ## Production risk register
 
-Single home of the 22 production risks. Other files cite the ID only. "Test" refers to planned tests in [execution-plan.md](execution-plan.md#planned-tests); all are **Not run**.
+Single home of the 22 production risks. Other files cite the ID only. "Test" refers to planned tests in [execution-plan.md](execution-plan.md#planned-tests); all are **Not run** except where a row says "B1: … ran" (see [B1 build record](#b1-build-record-2026-11-11)).
 
 | ID | Risk | Impact on this product's buyer and data | Proposed prevention | Detection signal | Test and expected outcome | Task |
 |---|---|---|---|---|---|---|
-| R-01 | Out-of-order or duplicate events overwrite a newer job state | A late "transcription failed" event flips a meeting that is already in review back to failed; the manager re-uploads a two-hour recording or loses corrections | All transitions through `core.jobs.transition` with compare-and-set on `meetings.state_version`; results stored under idempotency keys | Count of rejected stale transitions; any meeting whose state moved backwards | I-4: late completion arrives after a retry succeeded → state unchanged, late result stored but not applied | T-3.1.3 |
-| R-02 | A caller timeout prevents reconciliation with a valid later completion | The upload screen shows "failed" while the draft is actually ready; the manager writes the minutes by hand and the pilot's time-saved figure is wrong | Processing is asynchronous; status is read from the database, never from the original request; reconciler every 5 minutes | Jobs succeeded with meeting still in an earlier state for more than 10 minutes | I-5: caller times out, worker finishes → next poll shows ready; exactly one job | T-3.1.3 |
-| R-03 | New utilities duplicate behaviour already owned by shared code | A second way to build storage keys or compute a vote result appears; one path skips the building prefix or rounds a 3/4 vote differently | Single owners: `core.storage.key`, `core.authz`, `packages/rules`; lint rule flags new modules matching owned names; ownership list in `AGENTS.md` | Review checklist item; lint and static-check failures | U-8: storage keys built anywhere but `core.storage` fail lint. U-16: a seeded second writer of `computed_result` outside `packages/rules` fails the static check | T-2.1.1 |
-| R-04 | Applications import private code across architectural boundaries | The web app imports API internals and bypasses the access layer; a server component reads minutes without the building check | `apps/web` reaches data over HTTP only; import-boundary lint in CI | CI failure on forbidden import | Seeded forbidden import fails CI (acceptance check of T-2.1.1) | T-2.1.1 |
-| R-05 | Tenant enforcement is scattered or bypassed through APIs, workers, caches or files | A manager opens another building's recording, or one brokerage sees another's client minutes: a confidentiality breach for the managing broker and a privacy breach for owners | Forced row-level security on every tenant table; one session factory; workers scoped to one building; storage prefix per brokerage and building; no tenant cache | `access.denied` audit events; alert on 5 denials in 10 minutes; nightly permission suite | P-1, P-2, P-5, I-11: every cross-building and cross-brokerage attempt denied; zero rows without session variables | T-2.2.3 (suite: T-5.2.1) |
-| R-06 | Workers copy configuration and utility modules, causing drift | The worker keeps an old retention default or model ID, so audio is kept longer than the brokerage set, or drafts come from an unevaluated model | Workers import `packages/core` and `packages/ai`; no copies; one config schema validated at start | `/readyz` reports "configuration mismatch" when a row in `worker_heartbeats` carries a different fingerprint from the API's | I-21: same environment → fingerprints equal; worker restarted with a different retention default → `/readyz` not-ready | T-2.1.1 |
-| R-07 | Worker logging imports web-only modules and crashes during startup | Workers do not start after a deploy; no drafts by morning; M-2 missed for every meeting that night | `core.logging` has no web framework imports; worker image built without the web framework | Worker health check failing; jobs with no progress for 2 hours | Worker starts in an image without FastAPI (acceptance check of T-2.1.4) | T-2.1.4 |
-| R-08 | ORM declarations omit indexes or constraints present in migrations | A rebuilt test database lacks the unique "one current bylaw set per building" index; tests pass while production would cite a superseded bylaw, or the reverse | Constraints and indexes declared in models; CI compares a database built from migrations with one built from models | CI parity diff | G-2: model index missing from migrations → check fails with the difference | T-2.1.3 |
+| R-01 | Out-of-order or duplicate events overwrite a newer job state | A late "transcription failed" event flips a meeting that is already in review back to failed; the manager re-uploads a two-hour recording or loses corrections | All transitions through `core.jobs.transition` with compare-and-set on `meetings.state_version`; results stored under idempotency keys | Count of rejected stale transitions; any meeting whose state moved backwards | I-4: late completion arrives after a retry succeeded → state unchanged, late result stored but not applied B1: I-4 ran, pass. | T-3.1.3 |
+| R-02 | A caller timeout prevents reconciliation with a valid later completion | The upload screen shows "failed" while the draft is actually ready; the manager writes the minutes by hand and the pilot's time-saved figure is wrong | Processing is asynchronous; status is read from the database, never from the original request; reconciler every 5 minutes | Jobs succeeded with meeting still in an earlier state for more than 10 minutes | I-5: caller times out, worker finishes → next poll shows ready; exactly one job B1: I-5 ran, pass. | T-3.1.3 |
+| R-03 | New utilities duplicate behaviour already owned by shared code | A second way to build storage keys or compute a vote result appears; one path skips the building prefix or rounds a 3/4 vote differently | Single owners: `core.storage.key`, `core.authz`, `packages/rules`; lint rule flags new modules matching owned names; ownership list in `AGENTS.md` | Review checklist item; lint and static-check failures | U-8: storage keys built anywhere but `core.storage` fail lint. U-16: a seeded second writer of `computed_result` outside `packages/rules` fails the static check B1: U-8 and U-16 ran, pass. | T-2.1.1 |
+| R-04 | Applications import private code across architectural boundaries | The web app imports API internals and bypasses the access layer; a server component reads minutes without the building check | `apps/web` reaches data over HTTP only; import-boundary lint in CI | CI failure on forbidden import | Seeded forbidden import fails CI (acceptance check of T-2.1.1) B1: import-boundary test for `apps/api`, `apps/worker` and `packages/*` ran, pass (`apps/web` not built). | T-2.1.1 |
+| R-05 | Tenant enforcement is scattered or bypassed through APIs, workers, caches or files | A manager opens another building's recording, or one brokerage sees another's client minutes: a confidentiality breach for the managing broker and a privacy breach for owners | Forced row-level security on every tenant table; one session factory; workers scoped to one building; storage prefix per brokerage and building; no tenant cache | `access.denied` audit events; alert on 5 denials in 10 minutes; nightly permission suite | P-1, P-2, P-5, I-11: every cross-building and cross-brokerage attempt denied; zero rows without session variables B1: I-11, P-1, P-2, P-3, P-5, P-6 ran, pass; P-4 at database level only. | T-2.2.3 (suite: T-5.2.1) |
+| R-06 | Workers copy configuration and utility modules, causing drift | The worker keeps an old retention default or model ID, so audio is kept longer than the brokerage set, or drafts come from an unevaluated model | Workers import `packages/core` and `packages/ai`; no copies; one config schema validated at start | `/readyz` reports "configuration mismatch" when a row in `worker_heartbeats` carries a different fingerprint from the API's | I-21: same environment → fingerprints equal; worker restarted with a different retention default → `/readyz` not-ready B1: I-21 ran, pass. | T-2.1.1 |
+| R-07 | Worker logging imports web-only modules and crashes during startup | Workers do not start after a deploy; no drafts by morning; M-2 missed for every meeting that night | `core.logging` has no web framework imports; worker image built without the web framework | Worker health check failing; jobs with no progress for 2 hours | Worker starts in an image without FastAPI (acceptance check of T-2.1.4) B1: worker start with the web framework blocked ran, pass (`test_worker_starts_with_web_framework_absent`). | T-2.1.4 |
+| R-08 | ORM declarations omit indexes or constraints present in migrations | A rebuilt test database lacks the unique "one current bylaw set per building" index; tests pass while production would cite a superseded bylaw, or the reverse | Constraints and indexes declared in models; CI compares a database built from migrations with one built from models | CI parity diff | G-2: model index missing from migrations → check fails with the difference B1: ORM-versus-migration comparison ran with no difference (G-2 partial). | T-2.1.3 |
 | R-09 | Interrupted migrations or backfills cannot resume safely | A backfill of `delete_after` dies halfway; some recordings never get a deletion date and are kept past policy | Backfills run as resumable jobs with a progress row; idempotent batches | Backfill progress row not `done`; metric M-9 above zero | G-3: kill at row 2,300 of 5,000 → resumes, totals correct, no row twice | T-2.2.5 |
-| R-10 | Merged branches introduce conflicting migration order | Two developers add migrations; production applies them in a different order than staging and the row-level security policy migration runs before its table exists | Linear history; CI fails on more than one head; rebase required | CI head count | G-1: two heads → CI fails | T-2.1.3 |
+| R-10 | Merged branches introduce conflicting migration order | Two developers add migrations; production applies them in a different order than staging and the row-level security policy migration runs before its table exists | Linear history; CI fails on more than one head; rebase required | CI head count | G-1: two heads → CI fails B1: single-head check ran, pass (G-1 partial). | T-2.1.3 |
 | R-11 | Index creation locks busy production tables during deployment | A deploy at 9 a.m. blocks saves in the review screen while managers are correcting minutes | Concurrent index builds in their own migration; `lock_timeout` 5 s; deploys outside 07:00–22:00 Pacific | Lock-wait log entries; deploy aborts on timeout | G-4: index migration during a write loop → no lock wait over 5 s | T-2.2.5 |
-| R-12 | Correlation IDs disappear across jobs and retries, or sensitive data leaks into logs | A failed draft cannot be traced from the manager's error reference; or owners' names and arrears from a transcript end up in server logs with a longer life than the recording | Correlation ID stored on every job and log line; redaction filter and allow-list; no transcript, minutes, question or answer text in logs or audit details | Log scan for content-bearing field names; jobs without correlation ID | U-9: `text` and `email` fields redacted; job log lines carry the originating request's correlation ID | T-2.1.4 |
-| R-13 | Upload keys collide or fail to isolate tenant, source and purpose | Two recordings named `meeting.m4a` overwrite each other, or an export lands under another building's prefix and is swept with its data | Keys built only by `core.storage.key`: brokerage, building, purpose, UUID; never the original file name | Inventory job: objects whose key does not match a database row | U-8 and I-3: key pattern enforced; duplicate file yields one asset, different files never share a key | T-3.1.2 |
-| R-14 | Temporary uploads survive retention expiry or failed cleanup | Abandoned upload parts of a council meeting sit on disk indefinitely: personal information held with no purpose | `tmp/` purpose with 24-hour expiry; sweep covers incomplete uploads and export files; inventory comparison | Metric M-9; count of `tmp/` objects older than 24 hours | I-22: an upload abandoned after 2 of 5 parts and a `tmp/` object, both 25 hours old, are deleted by the sweep and the audio row is marked failed. I-9: the sweep is safe to run twice and tolerates an already-missing object | T-5.1.1 |
+| R-12 | Correlation IDs disappear across jobs and retries, or sensitive data leaks into logs | A failed draft cannot be traced from the manager's error reference; or owners' names and arrears from a transcript end up in server logs with a longer life than the recording | Correlation ID stored on every job and log line; redaction filter and allow-list; no transcript, minutes, question or answer text in logs or audit details | Log scan for content-bearing field names; jobs without correlation ID | U-9: `text` and `email` fields redacted; job log lines carry the originating request's correlation ID B1: U-9 ran, pass. Correlation ID propagation from request to job to worker log is implemented but has no test yet. | T-2.1.4 |
+| R-13 | Upload keys collide or fail to isolate tenant, source and purpose | Two recordings named `meeting.m4a` overwrite each other, or an export lands under another building's prefix and is swept with its data | Keys built only by `core.storage.key`: brokerage, building, purpose, UUID; never the original file name | Inventory job: objects whose key does not match a database row | U-8 and I-3: key pattern enforced; duplicate file yields one asset, different files never share a key B1: U-8 and I-2 key-pattern assertion ran, pass. | T-3.1.2 |
+| R-14 | Temporary uploads survive retention expiry or failed cleanup | Abandoned upload parts of a council meeting sit on disk indefinitely: personal information held with no purpose | `tmp/` purpose with 24-hour expiry; sweep covers incomplete uploads and export files; inventory comparison | Metric M-9; count of `tmp/` objects older than 24 hours | I-22: an upload abandoned after 2 of 5 parts and a `tmp/` object, both 25 hours old, are deleted by the sweep and the audio row is marked failed. I-9: the sweep is safe to run twice and tolerates an already-missing object B1: I-22 ran, pass. | T-5.1.1 |
 | R-15 | Missing persistent volumes cause data loss after service recreation | Recreating containers during a deploy erases the database or every recording and bylaw file of the pilot brokerage | Named volumes on the data disk; start-up check refuses to run with an empty volume when data is expected; nightly off-site backup | Start-up check failure; backup size drop alert | V-1: recreate all containers → data and files intact | T-6.1.1 |
 | R-16 | Generated file links use internal hosts or `localhost` behind a public proxy | The "Download Word" button or the data-export email gives the manager a link to `http://minio:9000/…` that does not open; minutes miss the 3-day target | All URLs built from `PUBLIC_BASE_URL`; file bytes streamed by the API, never linked from the object store; config validation rejects a non-HTTPS public URL in production | Link-host check in end-to-end tests; 4xx on download route | V-3: every URL shown or emailed starts with the public base URL; no response contains the object store's host name | T-6.1.1 |
 | R-17 | Local dependencies and workers lack a reliable single startup command and health checks | A second developer cannot run the stack, or runs it without the worker and never sees the processing states; defects in the upload flow ship untested | `make dev` starts everything with health checks; `/readyz` covers database, storage and queue | `/readyz` not ready; cold-start time | Acceptance check of T-2.1.2: clean checkout to ready; stopping the database flips readiness | T-2.1.2 |

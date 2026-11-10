@@ -2,7 +2,7 @@
 
 Read [AGENTS.md](AGENTS.md) first. It is canonical for reading order, sources of truth, conventions, tenant safety, migrations, tests, Git hygiene and completion reporting. This file adds only what is specific to this product.
 
-**State:** planning documents only. Every command is proposed. Nothing has been built or run.
+**State:** build milestone B1 (foundation and deterministic core), authorised by the owner on 2026-11-11 before the Phase 0 gate. See the AGENTS.md state line and `verification-report-fixing.md` "B1 build record" for what ran.
 
 ## The buyer's workflow in six lines
 
@@ -46,7 +46,7 @@ The pilot measures step 4: time saved **after** correction, across two authorize
 
 ## First verification checks when implementation begins
 
-Run these before any feature work is called complete. All are currently **Not run**; IDs refer to [execution-plan.md](execution-plan.md#planned-tests).
+Run these before any feature work is called complete. IDs refer to [execution-plan.md](execution-plan.md#planned-tests). B1 status per item is in `verification-report-fixing.md` "B1 build record"; in short: 1-6 ran and pass (I-9 audio only; U-7/I-8 against a fake model), 7 Not run (no containers, no link-building routes), 8 partly (I-13 server side only; I-15 ran).
 
 1. **I-11** — with no session variables, the application database role reads zero rows from every tenant table.
 2. **P-1, P-2, P-4 and P-6** — a manager assigned to ZZS 9001 gets 403 on every ZZS 9002 route including audio streams and downloads; a user of another brokerage gets 404 on everything; an operator reads nothing without a support grant; a managing broker can act in every building of their own brokerage and no other.

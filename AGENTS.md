@@ -2,7 +2,7 @@
 
 Canonical instructions for any coding or documentation agent working in this repository. `CLAUDE.md` adds product-specific guidance and defers to this file.
 
-**Current state: planning documents only.** There is no application code, no migration, no script, no test and no environment. Every command in this repository is **proposed** until an implementation exists. Do not report a proposed command as run.
+**Current state: build milestone B1 (foundation and deterministic core) on branch `feat/b1-foundation`, authorised by the owner on 2026-11-11 before the Phase 0 sales gate.** Python packages, three Alembic migrations with row-level security, an API and a worker exist and run locally against synthetic data only; transcription and the language model are fakes behind interfaces. There is no web frontend, no deployment, no real provider and no sign-in flow (web sessions are created only by tests). What ran and what did not is recorded in `verification-report-fixing.md` section "B1 build record". Commands not marked as existing below are still **proposed**; do not report a proposed command as run.
 
 ## What this repository is for
 
@@ -70,18 +70,28 @@ Number labels (`[C]`, `[A-chat]`, `[A]`, `[S: …]`, `[D]`) are defined at the t
 
 One owner per concern. Extend the owner; do not write a second one.
 
-| Concern | Owner |
-|---|---|
-| Configuration | `core.config` |
-| Logging and redaction | `core.logging` |
-| Access decisions | `core.authz` |
-| Database sessions with tenant context | `core.db.session_for` |
-| Storage keys and download links | `core.storage` |
-| Job states and transitions | `core.jobs` |
-| Audit events | `core.audit` |
-| Quorum and vote results | `packages/rules` |
-| Model calls, prompts, citation validation, evaluation | `packages/ai` |
-| Bylaw parsing and minutes export | `packages/docs` |
+| Concern | Owner | B1 module |
+|---|---|---|
+| Configuration | `core.config` | `packages/core/config.py` (`settings()`, `fingerprint()`) |
+| Logging and redaction | `core.logging` | `packages/core/logging.py` (JSON, correlation ID, allow-list redactor) |
+| Access decisions | `core.authz` | `packages/core/authz.py` (`locate()`, 403/404, denial audit) |
+| Database sessions with tenant context | `core.db.session_for` | `packages/core/db.py` (`Actor`, `session_for()`) |
+| Storage keys and download links | `core.storage` | `packages/core/storage.py` (`key()`, `ScopedStore`, local store; S3 adapter not built) |
+| Job states and transitions | `core.jobs` | `packages/core/jobs.py` (`transition()`, `enqueue()`, `lease()`, `reconcile()`) |
+| Audit events | `core.audit` | `packages/core/audit.py` (`record()`) |
+| Web sessions (identity only) | `core.sessions` | `packages/core/sessions.py` (Redis db 5; sign-in flow not built) |
+| Idempotency keys | `core.idempotency` | `packages/core/idempotency.py` |
+| Meetings, recording authority, uploads | `core.meetings` | `packages/core/meetings.py` |
+| Review, corrections, item citations | `core.review` | `packages/core/review.py` |
+| Approval and reopening | `core.approval` | `packages/core/approval.py` |
+| Activity timer and time reports | `core.activity` | `packages/core/activity.py` |
+| Pilot report (M-1 terms) | `core.pilot` | `packages/core/pilot.py` |
+| Business days | `core.timecal` | `packages/core/timecal.py` (holiday table not built in) |
+| Retention sweep | `core.retention` | `packages/core/retention.py` (audio and abandoned uploads only) |
+| Synthetic fixtures | `core.devdata` | `packages/core/devdata.py` (refuses outside local/test) |
+| Quorum and vote results | `packages/rules` | `packages/rules/` (`evaluate_motion`, `compute_vote`, `general_quorum`, `council_quorum`) |
+| Model calls, prompts, citation validation, evaluation | `packages/ai` | `packages/ai/` (`Transcriber`, `LlmClient`, `ClauseSearch` with fakes; `answer.validate_citations`) |
+| Bylaw parsing and minutes export | `packages/docs` | `packages/docs/` (plain-text clause splitter, audio magic bytes; export not built) |
 
 Before adding a helper, search these packages. If something close exists, change it there.
 
@@ -106,7 +116,7 @@ Before adding a helper, search these packages. If something close exists, change
 
 ## Tests
 
-- Proposed commands: `make dev`, `make seed`, `make test`, `make eval`, `make deploy TAG=…`, `make rollback TAG=…`. None exists yet.
+- Commands that exist (B1, root `Makefile`): `make venv`, `make db-role`, `make reset-test-db`, `make migrate-dev`, `make seed`, `make dev` (API on 8106 and worker run directly, waits for `/readyz`), `make stop`, `make test` (drops and re-migrates the test schema, then runs every test), `make test-unit`, `make lint` (ruff), `make typecheck` (mypy strict), `make check-migrations`. Still proposed: `make eval`, `make deploy TAG=…`, `make rollback TAG=…`, the Compose stack.
 - Integration and permission tests run against a real PostgreSQL with row-level security on. Do not mock the database for access tests.
 - Any change to prompts, model IDs or retrieval must re-run the AI fixtures; citation validity and refusal must stay at 100%.
 - Any change to `packages/rules` must keep U-1 to U-6 and U-10 to U-15 passing and bump the rules version.
@@ -118,7 +128,7 @@ Before adding a helper, search these packages. If something close exists, change
 - Small commits with a message that names the task ID (for example "T-3.2.3: 3/4 vote rule").
 - Never commit credentials, tokens, environment files, recordings, transcripts, real bylaws, or real names. Synthetic examples only.
 - Do not rewrite history on `main`. Do not delete someone else's unmerged branch.
-- The repository root holds exactly the ten planning files until implementation starts. Scratch files and checkers stay outside the repository.
+- The repository root holds the ten planning files plus `.gitignore` and `Makefile`; code lives in `apps/`, `packages/`, `tests/` and `tools/` (virtual environment, tool configuration, synthetic environment files). Scratch files and checkers stay outside the repository.
 
 ## Accurate completion reporting
 

@@ -155,7 +155,7 @@ All bodies JSON unless noted. All mutating calls accept an `Idempotency-Key` hea
 | `GET /members`, `POST /invitations`, `POST /invitations/{id}/resend`, `PATCH /members/{id}` | Team | Broker | Deactivation ends sessions |
 | `GET /buildings`, `POST /buildings`, `GET /buildings/{id}`, `PATCH /buildings/{id}` | Buildings | List and read: Manager. Create and edit: Broker | List returns assigned buildings only for a strata manager |
 | `PUT /buildings/{id}/assignments/{user_id}`, `DELETE …` | Assign and unassign | Broker | Audited |
-| `GET /buildings/{id}/bylaw-documents`, `POST …`, `GET /bylaw-documents/{id}`, `GET /bylaw-documents/{id}/pages/{n}`, `GET /bylaw-documents/{id}/original` | Bylaw library, page images, original as attachment | Manager | Upload is multipart; original is streamed by the API |
+| `GET /buildings/{id}/bylaw-documents`, `POST …`, `GET /bylaw-documents/{id}`, `GET /bylaw-documents/{id}/pages/{n}`, `GET /bylaw-documents/{id}/original` | Bylaw library, page images, original as attachment | Manager | Upload is multipart; original is streamed by the API. B1: JSON plain text only; pages and original not built |
 | `PATCH /bylaw-clauses/{id}`, `POST /bylaw-clauses/{id}/split`, `POST /bylaw-clauses/merge`, `POST /bylaw-documents/{id}/confirm`, `POST /bylaw-documents/{id}/supersede` | Edit, split, merge clauses; confirm; mark superseded | Manager | Confirm makes the document citable |
 | `GET /buildings/{id}/meetings`, `POST …`, `GET /meetings/{id}` | Meetings | Manager | `GET /meetings/{id}` writes `meeting.opened` |
 | `POST /meetings/{id}/move` | Move a meeting filed under the wrong building | Broker | Reason required; objects are re-keyed; audited |
@@ -511,6 +511,15 @@ The 22 production risks are registered once, in [verification-report-fixing.md](
 | Statute text changes | Stale Act links and rules | Reference set stores its "current to" date; quarterly check task |
 
 Accepted debt for the pilot: single host; manual invoicing; one brokerage per user; no template fidelity; no speaker recognition.
+
+**B1 build notes (2026-11-11; the decisions above are unchanged, these record where the build differs or is incomplete).**
+
+- **pgvector is not available** on the PostgreSQL 16 used for B1. Clause retrieval sits behind `ai.search.ClauseSearch`; the B1 implementation is PostgreSQL full-text search over the question's words, with `strata_id` and `status = 'current'` in the same query under row-level security. Embedding columns are not created. Hybrid vector retrieval (T-4.2.1 a) waits for an environment with pgvector.
+- **Web sessions** are stored server-side in Redis (database index 5 locally) under an HMAC of the cookie token, holding only user, brokerage, role and times; no tenant content, so "No application cache holds tenant data" still holds. The magic-link and authenticator sign-in (T-2.2.2) and the rate limits are not built.
+- **Bylaw upload** accepts plain text as JSON in B1 (`POST /buildings/{id}/bylaw-documents` with `text`), split synchronously; multipart PDF/DOCX upload, scanning and the `index_bylaws` job are not built.
+- **Upload parts** are appended with `PATCH /uploads/{id}?offset=N` (body = bytes); a wrong offset returns 409 with `received_bytes`. Malware scanning is not built.
+- **System context.** The reconciler, job leasing and retention sweep use `app.role = 'system'` on the application role instead of a separate `app_system` database role (schema.md "B1 implementation notes").
+- **Model output never sets an outcome.** In B1 the extraction's suggested method is kept only in `ai_suggestion` (`suggested_method`); `outcome_method` stays empty until the manager chooses, which is stricter than "pre-selects a method" above.
 
 ## 12. Glossary
 
