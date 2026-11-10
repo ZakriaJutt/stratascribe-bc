@@ -13,7 +13,7 @@ Status: planning document. Nobody has interviewed a customer. Willingness to pay
 | `[C]` | Stated in the chat (the earlier discussion, received through the decision brief). A price, an offer or a research note, not evidence. The tag covers two layers. **The chat's own answer** said only this: the problem; the buyer (managing broker); audio upload to BC-format minutes plus cited bylaw answers; 17 days; CAD 149 / 349 / 799; gross margin 83%; break-even 5 (35 with salary); the four prospect sources; two free meetings then a 60-day pilot at CAD 299; funnel 150 → about 15 → 7–8 → 2; and the stop rule. **Everything else tagged `[C]`** (for example "3 managers", the qualification rule, building allowances, the weekly plan, objections, competitor notes) comes from the research record the chat's answer was built on. Items that record itself marked "secondary" are called unverified wherever they are used. |
 | `[A-chat]` | An **assumption** whose value was stated in the chat. Every unit-economics input is of this kind. |
 | `[A]` | An **assumption or proposal** made by the author of these documents. Not decided in chat. |
-| `[S: name]` | Taken from a named source that the author opened on 2026-11-10. The source list is in [Sources and assumptions](#12-sources-and-assumptions). |
+| `[S: name]` | Taken from a named source that the author opened on 2026-11-10. The source list is in [Sources and assumptions](#13-sources-and-assumptions). |
 | `[D]` | Derived by arithmetic from tagged inputs shown beside it. |
 
 "Not decided in chat" means the earlier discussion left the point open. Where that happens this file makes a labelled proposal or states the missing input.
@@ -263,7 +263,7 @@ Why the model's month 1 (2,925) is above the chat's 700 or 1,000: the acquisitio
 
 All cells `[D]`, computed from unrounded intermediate values and rounded for display. Worked example, month 5: subscribers = 1.3125 × 0.98 = 1.28625; revenue = 1.875 × 299 + 1.28625 × 249 = 560.625 + 320.276 = 880.90; variable = 1.875 × 35 + 1.875 × 8.971 + 1.28625 × 42.521 = 65.625 + 16.821 + 54.693 = 137.14; net = 880.90 − 137.14 − 800 = −56.24.
 
-**Base-case result:** after contacting every brokerage in a 300-brokerage pool, the business has about 2.3 subscribers and CAD 573 of monthly revenue against CAD 800 of fixed cost. It does not reach break-even even without founder pay. Cash required over 12 months: **CAD 8,225 without founder pay, CAD 80,225 with it** `[D]`, and still rising.
+**Base-case result:** after contacting every brokerage in a 300-brokerage pool, the business has about 2.3 subscribers and CAD 573 of monthly revenue against CAD 800 of fixed cost. It does not reach break-even even without founder pay. Cash required over 12 months: **CAD 8,225 without founder pay, CAD 80,225 with it** `[D]`, and still rising. Both are counted from the first contact. The preparation fortnight before it ([section 12.8](#128-first-30-60-and-90-days)) is deliberately outside this table; with it the figures are 8,225.29 + 400 = **CAD 8,625** and 80,225.29 + 3,400 = **CAD 83,625** `[D]`.
 
 **Downside case.** Pool of 150 `[A]` (one wave); reply rate 5% instead of 10% `[A]`; pilot conversion 50% `[A]`; every converted account on Starter at CAD 149 `[C]` price; churn 4% `[A]`; wave spend unchanged at CAD 1,125.
 
@@ -289,7 +289,7 @@ All cells `[D]`, computed from unrounded intermediate values and rounded for dis
 | 11 | 0 | 0.352 | 52.48 | 13.96 | 800 | −10,361.60 | −76,361.60 |
 | 12 | 0 | 0.338 | 50.38 | 13.40 | 800 | −11,124.62 | −83,124.62 |
 
-All cells `[D]`. In the downside the expected number of pilots after 150 contacts is below 1, so the stop rule should fire at about day 60.
+All cells `[D]`. In the downside the expected number of pilots after 150 contacts is below 1, so the stop rule should fire at about day 60. With the preparation fortnight the month-12 figures are 11,124.62 + 400 = CAD 11,525 and 83,124.62 + 3,400 = CAD 86,525 `[D]`.
 
 **Cost of reaching the stop decision** (months 1–2 of either case):
 
@@ -299,8 +299,9 @@ All cells `[D]`. In the downside the expected number of pilots after 150 contact
 | The chat's 30-day roadmap budget | 1,000 `[C]` | The same lines at higher amounts |
 | **This file's cap, without founder pay** | 1,000 + 1,125 + 2 × 800 = **3,725** `[D]` | Two months, not one; the modelled acquisition and fixed buckets; and CAD 1,000 for legal review and other items the chat did not budget |
 | This file's cap, with founder pay | 3,725 + 2 × 6,000 = **15,725** `[D]` | As above plus two months of founder compensation |
+| **The same caps counted from the start of preparation** | 3,725 + 400 = **4,125**; 15,725 + 3,400 = **19,125** `[D]` | Adds the preparation fortnight before the first contact: half a month of fixed cost (0.5 × 800) and, with founder pay, half a month of compensation (0.5 × 6,000) `[A]`; see [section 12.8](#128-first-30-60-and-90-days) |
 
-The cap is 3.7 to 5.3 times the chat's budget `[D]` (3,725 ÷ 1,000; 3,725 ÷ 700) because it covers two months instead of one (the 30-day sales cycle cannot finish in the chat's four weeks), uses the modelled CAD 600 per pilot, and adds legal review. **Proposal `[A]`: the founder plans to the chat's CAD 1,000 for month 1 and treats CAD 3,725 as the ceiling by day 60.** Which figure to hold to is the founder's decision and was not decided in chat.
+The cap is 3.7 to 5.3 times the chat's budget `[D]` (3,725 ÷ 1,000; 3,725 ÷ 700) because it covers two months instead of one (the 30-day sales cycle cannot finish in the chat's four weeks), uses the modelled CAD 600 per pilot, and adds legal review. **Proposal `[A]`: the founder plans to the chat's CAD 1,000 for month 1 and treats CAD 3,725 as the ceiling by day 60 after the first contact, which is CAD 4,125 counted from the start of preparation.** The 3,725 and 15,725 figures in this section are the preparation-exclusive ones on purpose, because the ramp counts months from the first contact; the stop-rule memo reports spend against 4,125 (19,125 with founder pay). Which figure to hold to is the founder's decision and was not decided in chat.
 
 ### 7.7 What would have to be true (thresholds, not forecasts)
 
@@ -364,14 +365,14 @@ Every row below is the author's proposal. Rows marked "changed" alter what the c
 
 | Point | Chat's rule `[C]` | Proposal `[A]` | Status |
 |---|---|---|---|
-| When to evaluate | After 150 contacts and 8 demos; the weekly plan implies week 4 | Day 60 after first contact, or earlier if all 150 are contacted and every open conversation has closed | **Changed** (adds a date) |
+| When to evaluate | After 150 contacts and 8 demos; the weekly plan implies week 4 | Day 60 after first contact, or earlier if all 150 are contacted and every open conversation has closed. If on day 60 a signed pilot is unpaid or a free test is still running and could change the outcome, the memo is provisional and is closed by day 74 ([section 12.9](#129-gtm-stop-rule)) | **Changed** (adds a date and a 14-day close-out) |
 | What counts as a paid pilot | "pay for a pilot" | Pilot agreement signed and the CAD 299 invoice paid, for a pilot first delivered by hand ([section 5](#5-offer-channel-pilot)) | Clarified |
 | 0 paid pilots | Stop or pivot | Stop or pivot | Same |
 | Exactly 1 paid pilot | **Stop or pivot** | **Inconclusive:** deliver that pilot by hand, spend nothing on Phases 1–6, and decide on its measured time saving at the end of its 60 days | **Changed** |
 | 2 or more paid pilots | Continue | Continue to Phase 1 | Same |
 | Fewer than 8 demos from 150 contacts | Not stated | Not a stop by itself; the pilot count decides. The demo count is reported in the memo. | **Added** |
 | Firms refuse recording | Stop (no number given) | Stop the recorded-audio product if 5 or more of the demoed brokerages (or more than half, if fewer than 8 were demoed) either state a no-recording policy or cannot name two upcoming meetings at buildings with a recording bylaw | **Changed** (adds a number) |
-| Spend to this point | CAD 700 / 1,000 budgets | Ceiling CAD 3,725 without founder pay ([section 7.6](#76-cash-required-during-the-acquisition-ramp)) | **Changed** |
+| Spend to this point | CAD 700 / 1,000 budgets | Ceiling CAD 3,725 without founder pay from the first contact; CAD 4,125 from the start of preparation ([section 7.6](#76-cash-required-during-the-acquisition-ramp)) | **Changed** |
 
 Outcome probabilities if every chat assumption is exactly true (pilots Poisson with mean 1.875) `[D]`:
 
@@ -405,12 +406,253 @@ The proposal does not make a true-assumption venture more likely to continue; it
 5. Pilot-to-subscription conversion.
 6. Whether CAC is per pilot or per subscriber, and the composition of the CAD 800 fixed cost.
 7. Location of the founder's VPS and which hosted LLM, if any, can be used with Canadian processing ([TRD.md](TRD.md#9-architecture-decisions)).
-8. A BC strata lawyer's view on recording authority, on who must agree in writing before a recording is processed by an outside service, and on whether cited bylaw answers could be treated as legal advice `[C]` risk. The five questions are listed under T-0.1.3 in [execution-plan.md](execution-plan.md).
+8. A BC strata lawyer's view on recording authority, on who must agree in writing before a recording is processed by an outside service, and on whether cited bylaw answers could be treated as legal advice `[C]` risk. The first five of the six questions listed under T-0.1.3 cover these in [execution-plan.md](execution-plan.md).
 9. Fair-use ceiling on meetings per building.
 10. How often motions at pilot buildings are decided on a show of cards with no count (affects how much of the draft can be checked by arithmetic at all).
 11. BC statutory holiday list for the business-day calculation.
+12. The lawyer's answer on outreach (question 6 of T-0.1.3). The statute and both regulations were read ([section 12.4](#124-channel-and-sequence)); what stays open is judgment: whether an association directory listing counts as an address the recipient caused to be published, whether the sender block is sufficient, and whether a LinkedIn connection note is a commercial electronic message. Telemarketing rules for calls to businesses: unverified, no source consulted.
+13. The share of the 150 brokerages whose managing broker has an email address published on the brokerage's own website (sets the mix of email and phone first touches).
 
-## 12. Sources and assumptions
+## 12. Go-to-market plan
+
+Added 2026-11-10 at the owner's request, after the independent review, and revised the same day after the reviewer's findings F-027 to F-030. Nothing here has been tried: no message has been sent and no prospect has been called. This section arranges what sections 2 to 11 already decide into a plan for the first paying accounts and cites them instead of repeating them. Every rate is an assumption. Tasks are in Phase 0 of [execution-plan.md](execution-plan.md#phase-0--validation-by-hand-no-application).
+
+### 12.1 Ideal customer profile
+
+| Item | Value | Label |
+|---|---|---|
+| Firm type | A brokerage licensed by BCFSA for strata management services; one legal entity is one prospect ([section 8](#8-funnel-recomputed-from-distinct-reachable-prospects)) | `[C]`, `[A]` distinctness rule |
+| Size | 3–40 strata managers; 5–80 employees; 10 or more strata corporations under management | `[C]` |
+| Region | Metro Vancouver and Victoria first; the Fraser Valley for the second and third accounts | `[C]` |
+| Trigger | One of the four buying triggers in [section 5](#5-offer-channel-pilot): a manager resigns, AGM season, owner complaints about late minutes, new buildings without new staff | `[C]`, untested |
+| Qualified when | The two qualification rows of [section 5](#5-offer-channel-pilot) both hold: the chat's rule `[C]` and the added rule on two upcoming authorized meetings or dictated notes `[A]` | — |
+
+**Disqualifiers** `[A]`, each the negative of a rule already in this file. A prospect is dropped from the wave, and logged with the reason, when:
+
+1. it manages fewer than 10 strata corporations `[C]`;
+2. its managers do not write their own minutes `[C]` (someone else already does it, so no manager time is saved);
+3. it has a firm no-recording policy **and** refuses the dictated-notes mode; this also counts toward the recording stop in [section 9.3](#93-proposed-revision-a--a-change-to-the-chats-rule-not-a-restatement);
+4. it cannot name two upcoming meetings at buildings whose filed bylaws allow recording **and** refuses dictated notes `[S: OIPC-2022]`;
+5. its managing broker will not sign the hand-run agreement (T-0.3.2), or a council withholds the written acknowledgement that the protocol requires until the lawyer answers question 4 of T-0.1.3;
+6. it is a self-managed council or is outside British Columbia: those belong to the pivot and the scale path, not to this plan `[C]`.
+
+### 12.2 Named roles
+
+| Role in the sale | Who | Why | Label |
+|---|---|---|---|
+| Feels the pain | The strata manager, who writes minutes after evening meetings and answers repeat bylaw questions | [Section 3](#3-launch-market-problem-workaround) | `[C]`, not measured |
+| Signs and pays | The managing broker or director of strata operations: signs the hand-run agreement (T-0.3.2) and the pilot agreement (T-0.4.1) and pays the CAD 299 invoice | [Section 2](#2-who-pays-who-uses-what-is-billed) | `[C]` |
+| Can block | (1) The strata council of each building: recording authority comes from the strata corporation's filed bylaws and the brokerage cannot supply it. (2) The managing broker in their supervisory role: a new vendor handling owner recordings must pass their confidentiality duty. (3) Whoever approves software at the brokerage. | (1) `[S: OIPC-2022]`, `[S: SPA]` s. 128; (2) `[S: RESR]` s. 30(e); (3) "brokerage IT approval" is a dependency named in the chat's research `[C]` | as shown |
+| Supplies the sample data | The strata manager supplies the per-building and per-meeting inputs and the stopwatch baseline listed under "Sample inputs needed" in [section 5](#5-offer-channel-pilot); the managing broker supplies the signed agreement and the building counts | `[A]` | `[A]` |
+
+### 12.3 Prospect list
+
+- **Sources:** the "Prospect sources" row of [section 5](#5-offer-channel-pilot) `[C]`. LinkedIn Sales Navigator `[C]` is used to find names only. The BCFSA licence search defines the prospects; PAMA, CHOA and CCI Vancouver listings only add a named contact to a licence number ([section 8](#8-funnel-recomputed-from-distinct-reachable-prospects)).
+- **How many exist:** not established ([section 11](#11-missing-inputs), item 1). The plan uses the two pools of [section 8](#8-funnel-recomputed-from-distinct-reachable-prospects): 300 distinct brokerages in the base case `[A]` and 150 in the downside `[A]`. The first wave needs 150 `[C]`.
+- **How it is built:** task T-0.1.1, subtasks (a) to (f), 6–10 founder hours `[A]`. Subtask (c) records, for each email address, where the recipient published it, the date seen and that no refusal statement was beside it; an address without that record is marked "phone or visit only" (12.4).
+- **How it is checked:** the acceptance check of T-0.1.1 (a second person finds 10 random rows in the BCFSA search; no licence number twice). The sales log of T-0.2.1 is keyed by the same licence number, so a brokerage cannot be contacted or counted twice.
+- **Cost:** about CAD 80 per 100 prospects `[A-chat]`, so 150 × 0.80 = CAD 120 for the first wave `[D]`. It sits inside the acquisition bucket of [section 7.6](#76-cash-required-during-the-acquisition-ramp), not on top of it.
+- **If the count is under 150:** the first wave is the whole pool, every expected value in 12.8 scales down in proportion, and the last row of [section 10](#10-what-buyer-evidence-would-change-the-decision) applies.
+
+### 12.4 Channel and sequence
+
+**First channel to test:** direct outreach to the managing broker with the free two-meeting test `[C]`. The backup channel (association seminars and newsletters `[C]`) is used only if the channel check in 12.9 fails.
+
+| Step | When | What | Label |
+|---|---|---|---|
+| 0 | Preparation, about 14 days before the first contact `[A]` | The list is built with a consent record for each email address (T-0.1.1); the authority pack and six questions go to the lawyer (T-0.1.3). **No first touch of any kind is made until the lawyer's written answer to question 6 is in hand.** | `[A]`; follows from `[S: CASL]` |
+| 1 | Day 0 for that brokerage | First touch to the managing broker by name. **By email** (text in 12.5) only where the list holds a consent record for that address; **by phone** (call script in 12.5) for every other brokerage. LinkedIn is used to find the managing broker's name and nothing else: no connection request, note or message is sent there in this wave. | `[C]` channel; `[A]` wording and channel rule |
+| 2 | 5 business days `[A]` later | One follow-up `[A]`: by phone where a number is listed, asking for the managing broker and avoiding Monday mornings and AGM evenings `[C]`; otherwise by email (text in 12.5), and only to an address that has a consent record. No third touch `[A]`. | T-0.2.1 subtask (e); `[C]` call advice |
+| 3 | On a reply | A 20-minute `[A]` call or visit: the five discovery questions and two added ones (T-0.1.2), then the demo and qualification record (T-0.2.2) | `[C]`, `[A]` |
+| 4 | After a qualified demo | Hand-run agreement signed, then the free two-meeting test (T-0.3.2 to T-0.3.4) | `[C]` offer; `[A]` protocol |
+| 5 | After the measurement table is shown | Pilot agreement and CAD 299 invoice (T-0.4.1) | `[C]` |
+
+Anyone who unsubscribes, or says no by any means, goes on a suppression list in the sales log and is not contacted again.
+
+**Canada's anti-spam legislation: what the text says, and what is left to the lawyer.** This is the author's reading of the statute and two regulations, opened on 2026-11-10 (rows CASL, CASL-CRTC and CASL-GIC in [section 13](#13-sources-and-assumptions)). **It is not legal advice**, and no message is sent on the strength of it: the lawyer's answer to question 6 of T-0.1.3 comes first.
+
+| Point | What the source says | What this plan does | Left to the lawyer |
+|---|---|---|---|
+| Is the first-touch email covered? | A commercial electronic message is one whose purpose, or one of whose purposes, is to encourage participation in a commercial activity, including an offer to sell a service `[S: CASL]` s. 1(2). It may be sent to an electronic address only with express or implied consent **and** in the required form, s. 6(1). | Both email texts are treated as commercial electronic messages, although the test they offer is free. | — |
+| Consent for a cold email | Consent is implied only in listed cases. The one that can fit a cold contact: the recipient "has conspicuously published, or has caused to be conspicuously published" the address, the publication carries no statement refusing unsolicited commercial messages, and the message is relevant to the recipient's business or role, s. 10(9)(b). The sender has the onus of proving consent, s. 13. The exclusion for messages between organizations needs an existing relationship `[S: CASL-GIC]` s. 3(a)(ii), which a cold contact lacks. | Email is used only where the list records, per address: the address, the page on which the recipient or their brokerage published it, the date seen, and that no refusal statement was beside it (T-0.1.1). The message is about minutes written by the brokerage's managers, which is within a managing broker's role. Addresses taken from Sales Navigator, guessed from a pattern, or found only in a third party's list get no email. | Whether a listing in an association's member directory counts as "caused to be published" by the recipient (question 6(a)). Until answered, only addresses on the brokerage's own website count. |
+| Form of every email, first touch and follow-up | The message must identify the sender, give contact information and set out an unsubscribe mechanism, s. 6(2). Required: the sender's name or business name; the mailing address; and a telephone number, an email address or a web address `[S: CASL-CRTC]` s. 2(1); set out clearly and prominently, s. 3(1). The mechanism must name an electronic address or link to a web page to which the wish can be sent, at no cost, s. 11(1); a request takes effect within 10 business days, s. 11(3); the contact information and the mechanism stay valid for at least 60 days, ss. 6(3) and 11(2). | Both email texts in 12.5 end with a block holding the name, mailing address, telephone number, email address and an unsubscribe line naming an address. The founder keeps that address working for 60 days after the last send and acts on each request the same day. | Whether the block as drafted is sufficient (question 6(b)). |
+| Phone call and voicemail | Section 6 does not apply to a message that is an interactive two-way voice communication between individuals, or a voice recording sent to a telephone account, s. 6(8)(a) and (c). | A phone first touch or follow-up, with or without a voicemail, is used where email has no consent record. | Telemarketing rules for calls to businesses were **not checked: unverified, no source consulted** (question 6(d)). |
+| LinkedIn | "Electronic address" includes an instant messaging account and "any similar account", s. 1(1). Messages on a messaging service are excluded only if the required information and unsubscribe mechanism are published on the service's interface and the recipient consents expressly or by implication `[S: CASL-GIC]` s. 3(d). | No commercial message is sent on LinkedIn in the first wave, so no consent basis is claimed for it. The chat's connection text and follow-up `[C]` are not used. | Whether a connection request with a note is a commercial electronic message, and whether s. 3(d) could cover it (question 6(c)). |
+| Exposure | The maximum penalty for a violation is CAD 1,000,000 for an individual, s. 20(4). | Stated so the cost of skipping step 0 is visible. | — |
+
+**Weekly volume for one founder, and the paying accounts it yields.** The chat's weekly plan sends 60 first touches in week 1 and 90 in week 3 `[C]`. This plan keeps the two cohort sizes and sends the 90 in week 4 `[A]`, one week later, so that the message check in 12.9 can be read before they go. Both cohorts are still contacted in month 1, so no month of the ramp in [section 7.6](#76-cash-required-during-the-acquisition-ramp) moves. Rates are the chat's `[A-chat]`; pilot conversion is the author's 70% `[A]`.
+
+| Cohort | First touches | Replies (10%) | Demos (50%) | Paid pilots (25%) | Recurring accounts (70%) |
+|---|---|---|---|---|---|
+| Week 1 | 60 `[C]` | 6 `[D]` | 3 `[D]` | 0.75 `[D]` | 0.525 `[D]` |
+| Week 4 | 90 `[C]` | 9 `[D]` | 4.5 `[D]` | 1.125 `[D]` | 0.7875 `[D]` |
+| **Wave (one month of outreach)** | **150** | **15** | **7.5** | **1.875** | **1.3125** |
+
+- Check: 60 × 0.10 × 0.50 × 0.25 = 0.75; 90 × 0.10 × 0.50 × 0.25 = 1.125; 0.75 + 1.125 = **1.875** paid pilots; 1.875 × 0.70 = **1.3125** recurring accounts `[D]`. These are the "Paid pilots" and "Paying subscribers" rows of [section 8](#8-funnel-recomputed-from-distinct-reachable-prospects).
+- Paying accounts by month, counted from the first contact, using the definition of one paying account in [section 2](#2-who-pays-who-uses-what-is-billed) and rules 2 and 3 of [section 7.6](#76-cash-required-during-the-acquisition-ramp): month 1, **0**; month 2, **1.875** paid pilots start; month 3, the same 1.875 pilots, no new account; month 4, **1.3125** recurring accounts first billed. These are the "Pilots starting" and "Subscribers billed" cells of months 1 to 4 in the base-case table (0, 1.875, 0, 1.312) `[D]`.
+- The base case sends one wave every three months (months 1 and 4) until the pool of 300 `[A]` is used up, so the average is 1.875 ÷ 3 = 0.625 new paid pilots and 1.3125 ÷ 3 = 0.4375 new recurring accounts per month `[D]`. Two waves give 3.75 pilots and 2.625 recurring accounts `[D]`, the last row of the funnel table.
+- Workload: T-0.2.1 allows 20–30 hours `[A]` for 150 first touches and their follow-ups, which is 8–12 minutes per brokerage `[D]` (20 × 60 ÷ 150; 30 × 60 ÷ 150). Week 1 is therefore 8–12 hours of first touches and week 2 about 54 follow-ups (60 less 6 expected replies `[D]`); week 4 is 12–18 hours and week 5 about 81 follow-ups (90 less 9 `[D]`). What limits the plan is not sending but delivery: at most 2 hand-run pilot brokerages at once ([execution-plan.md](execution-plan.md#milestone-04--paid-pilot-agreement-and-stop-rule)) `[A]`, which the expected 1.875 just fits.
+- The mix of email and phone first touches is unknown until the list is built. The 10% reply rate `[A-chat]` and the 8–12 minutes are **assumed** to hold whatever the mix `[A]`; the chat gave one rate and did not separate channels. A phone-heavy wave is likely to take longer per brokerage, and in-person visits (the chat's "first customer" plan uses them for 15 brokerages `[C]`) do not fit in 12 minutes. Neither is re-estimated here: the sales log records channel and minutes per brokerage so that the rate and the hours can be restated in the stop-rule memo.
+
+### 12.5 Message
+
+All three texts are synthetic drafts `[A]`, written to the invented managing broker "Marta" at the invented Harbourline Strata Services Ltd. They replace the chat's draft email and LinkedIn messages `[C]`, which offered to process past meeting recordings and said nothing about recording authority. None says recording is permitted. None says where files are stored: the location of the founder's server is unconfirmed ([section 11](#11-missing-inputs), item 7), so the texts state only that drafting uses models on the founder's own computer, which the protocol under T-0.3.2 requires. If asked, the founder says the server's location is being confirmed and offers to collect files in person, which the protocol allows.
+
+**First touch (email, only to an address with a consent record)**
+
+> Subject: Timing the minutes for two Harbourline council meetings
+>
+> Hi Marta,
+>
+> I am a Vancouver developer testing a minutes-drafting service for BC strata managers. I have no customers yet, so I am offering a free test. For two upcoming meetings, one of your managers sends me a recording or their own dictated notes, and by the next business morning gets a draft in BC form, with motions, movers, seconders and outcomes, to correct. The manager times their usual method and the correction with a stopwatch, and you see the difference in minutes.
+>
+> One condition matters. Guidance from the BC privacy commissioner says recording a strata meeting is likely not authorized unless the strata's own bylaws allow it. I cannot tell you that recording is permitted at your buildings. I accept a recording only from a building whose filed bylaws allow it; for any other building I work from notes the manager dictates after the meeting.
+>
+> What I would need from you: two upcoming meetings; the bylaws and rules of those buildings; the attendance and vote notes your manager already takes; two sets of minutes timed the usual way; your signature on a one-page data-handling agreement; and, until my lawyer confirms otherwise, a written acknowledgement from each council. Drafts are made with models that run on my own computer, not by a hosted AI service, and your files are deleted on a fixed schedule.
+>
+> If the test shows a real saving after correction, the next step is a 60-day pilot for up to 3 managers at CAD 299 in total. If it does not, you owe nothing and I will tell you so.
+>
+> Would a 20-minute call next week be useful?
+>
+> [Founder's full name], [business name, if one is registered]
+> [Street address, city, BC, postal code]
+> [Telephone number] · [founder's email address]
+> I found your address on [page where it is published]. If you do not want further email from me, reply "unsubscribe" or write to unsubscribe@[founder's domain] and I will stop.
+
+**Follow-up (5 business days later; the only one). By email, only to an address with a consent record:**
+
+> Hi Marta,
+>
+> One follow-up on my note of [date]; I will not send another. The offer is a free test on two upcoming council meetings: a draft of the minutes by the next business morning, and a stopwatch comparison against the way your manager writes them now. If it saves time after correction, a 60-day pilot for up to 3 managers is CAD 299 in total.
+>
+> It would need the same things from Harbourline as before: two meetings at buildings whose filed bylaws allow recording, or a manager willing to dictate notes afterwards instead; those buildings' bylaws and rules; the manager's attendance and vote notes; two sets of minutes timed the usual way; a one-page data-handling agreement signed by you; and, until my lawyer confirms otherwise, a written acknowledgement from each council. If none of your buildings has a recording bylaw, that is worth knowing too, and the dictated-notes test still works.
+>
+> Is there a manager I should speak to?
+>
+> [Founder's full name], [business name, if one is registered]
+> [Street address, city, BC, postal code]
+> [Telephone number] · [founder's email address]
+> If you do not want further email from me, reply "unsubscribe" or write to unsubscribe@[founder's domain] and I will stop.
+
+**Call script (phone first touch, or phone follow-up; about one minute)**
+
+> "Hello, my name is [name]. I am a developer in Vancouver, and I am calling for Marta, the managing broker. Is this a bad moment?"
+>
+> If it is: "When would be better?" Note the time and end the call.
+>
+> Otherwise: "I am testing a service that drafts strata council minutes for the manager to correct. I have no customers yet. I would like to run a free test on two of your upcoming meetings and time it against how your manager writes minutes now. I can take a recording only from a building whose filed bylaws allow recording; I cannot tell you whether yours do. Otherwise your manager dictates notes after the meeting. It would need the buildings' bylaws, your manager's vote notes, two timed sets of minutes, a one-page agreement from you and, for now, a written acknowledgement from each council. If it saves time, a 60-day pilot for up to 3 managers is CAD 299 in total. Could I have 20 minutes with you or one of your managers next week?"
+>
+> If no: "Thank you. I will not call again." Mark the brokerage as declined.
+>
+> Voicemail: name, telephone number, "a free test of minutes drafting for two of your council meetings", and "I will not call again unless I hear from you."
+
+Prices and terms in the texts are the chat's `[C]`; "20-minute", "5 business days", the single follow-up, the stopwatch comparison, the agreement, the acknowledgement, and the identification and unsubscribe block are the author's `[A]`. The block follows `[S: CASL]` s. 6(2) and `[S: CASL-CRTC]` s. 2(1) as read by the author; the lawyer checks it (question 6(b)).
+
+**Items in the chat's go-to-market research `[C]` that this plan leaves out, and why** `[A]`:
+
+| Item in the brief | What happened to it | Reason |
+|---|---|---|
+| LinkedIn search filter (titles, British Columbia, Real Estate), connection text and LinkedIn follow-up | Filter kept only as a way to find a managing broker's name; both texts dropped | No commercial message is sent on LinkedIn until the lawyer answers question 6(c); the follow-up also offered to process a past recording |
+| Draft cold email | Replaced by the first touch above | It promised a draft from recordings without mentioning recording authority, and had no sender block or unsubscribe line |
+| Five search keywords | Not used | The plan has no search advertising or content channel; nothing in the economics pays for one |
+| Five-minute demo script (upload, draft, export, bylaw question, audit log and price) | Replaced by the demo in T-0.2.2 | It demonstrates an application that does not exist in Phase 0; the demo uses a synthetic recording and a hand-made draft |
+| Positioning line "the only minutes and bylaw assistant built on the BC Strata Property Act…" | Not used in any message | "Only" rests on a search that found nothing, which is not proof ([section 4](#4-competitor-gap-supporting-evidence-counterargument)), and nothing is built yet |
+| Referral offer for self-managed councils (a discount code at CHOA and VISOA seminars) | Not used; the brokerage half is in [section 5](#5-offer-channel-pilot) | Councils are not customers in this pilot |
+| Notice script as the answer to the recording objection | Replaced in 12.7 | Weakened by `[S: OIPC-2022]` |
+
+### 12.6 Pilot offer and conversion
+
+What the buyer gets, pays and supplies is decided in [section 5](#5-offer-channel-pilot) (rows "Free test", "Paid pilot", "What the paid pilot delivers before the application exists", "When a pilot counts as paid", "Sample inputs needed") and is not repeated here.
+
+**What ends the pilot** `[A]`: the 60th day `[C]` after the first pilot meeting that follows payment. In its last week the founder gives the managing broker the end-of-pilot summary (T-0.4.3, subtask (e)) with three results: whether minutes went out within 3 business days for every meeting `[C]`; the net time saved per meeting after correction against the 45-minute proposal in [section 10](#10-what-buyer-evidence-would-change-the-decision) `[A]`; and every motion, vote or citation error and who caught it.
+
+**The exact step from pilot to a recurring paid account** `[A]`; the chat did not describe it:
+
+1. In the same meeting the managing broker states how many buildings the brokerage will load.
+2. That count sets the tier: up to 10 buildings Starter CAD 149, up to 30 Pro CAD 349, up to 100 Business CAD 799, plus CAD 15 per extra building, all per month `[C]`.
+3. The managing broker signs a one-page monthly subscription order that carries over the pilot's data-handling terms and its recording-authority condition.
+4. The founder issues the first monthly invoice when the pilot ends. This is the "first billed two months after the pilot's start month" of rule 3 in [section 7.6](#76-cash-required-during-the-acquisition-ramp).
+5. The brokerage is counted as a recurring paid account when that invoice is **paid**, the same test as for a paid pilot.
+
+Until the application is released the subscriber is still served by hand at the pilot's cap of about 12 meetings per month `[A]`; a brokerage that needs more cannot be served yet and is told so. Annual billing, a notice period and what happens to a pilot that neither converts nor declines are not decided in chat. The assumed share that converts is 70% `[A]` (50% in the downside `[A]`); no evidence supports either.
+
+### 12.7 Objections
+
+The chat's three objections and its answers are in [section 5](#5-offer-channel-pilot) `[C]`. Below are the three the author expects most often `[A]`, with the answer the founder can give today without overstating anything.
+
+| Objection | Honest answer | Basis |
+|---|---|---|
+| "Our councils will not agree to recording", or "Are we even allowed to record?" | Possibly not, and the founder cannot say they are. The regulator's guidance is that recording is likely not authorized without a bylaw, and passing one takes a 3/4 vote at a general meeting and a filing. A notice script, the chat's answer, is not offered as enough. The test uses only buildings that already have a filed recording bylaw, or the manager's dictated notes. If a brokerage has neither, the honest answer is that the product does not fit it today. | `[S: OIPC-2022]`; `[S: SPA]` s. 128; counterargument 1 in [section 4](#4-competitor-gap-supporting-evidence-counterargument); lawyer's questions 1 to 3 in T-0.1.3 still open |
+| "Otter or ChatGPT and our Word template are enough" (the current workaround) | That may be true, and it is cheaper: Otter Business for 3 managers costs about a third of the Pro price. Nobody has measured whether a BC-form draft cuts correction time enough to earn the difference. The free test measures exactly that with a stopwatch, on the brokerage's own meetings; if the saving after correction is small, the brokerage should not buy. One caution the founder can add truthfully: Otter's pricing page carries no data-residency statement, and pasting owners' information into a general chatbot is the managing broker's own confidentiality question. | 2.81× and 3.58× in [section 4](#4-competitor-gap-supporting-evidence-counterargument) `[D]`; `[S: Otter]`; `[S: RESR]` s. 30(e); ChatGPT itself not checked |
+| "We cannot rely on AI for a vote result or a legal question" | Agreed, and the service does not ask for that. A motion's outcome is what the chair declared or a count the manager confirms, never the model's reading; a bylaw answer is the quoted clause with its number, or "none found". The manager corrects and approves everything and sends it the way they do now. Two limits are stated plainly: the draft will contain errors, which is why correction time is the thing measured; and whether a quoted clause could be treated as legal advice is an open question for the lawyer. | Counterargument 3 in [section 4](#4-competitor-gap-supporting-evidence-counterargument); MH-06 and MH-10 in [PRD.md](PRD.md#must-haves); lawyer's question 5 in T-0.1.3 |
+
+"Condo Control has AI" stays in [section 5](#5-offer-channel-pilot) with the chat's answer; its pricing page lists Capstan AI as an add-on and does not mention British Columbia `[S: CondoControl]`, and what that add-on does for minutes was not tested.
+
+### 12.8 First 30, 60 and 90 days
+
+**Day 1 is the first contact**, as in the stop rule and the ramp. It is preceded by a preparation period of about 14 days `[A]` in which nothing is sent, because the first touch waits for the lawyer's answer to question 6 (12.4, step 0). The 14 days are the author's guess at a lawyer's turnaround; no lawyer has been asked. If the answer takes longer, day 1 moves and nothing else in this section changes. Expected values are the funnel of [section 8](#8-funnel-recomputed-from-distinct-reachable-prospects) `[D]` on assumed rates `[A-chat]`; fractions are expectations, not customers. Money is the base-case table of [section 7.6](#76-cash-required-during-the-acquisition-ramp); hours are sums of the task ranges in [execution-plan.md](execution-plan.md#effort-summary) `[A]`.
+
+**Weekly activity targets**
+
+| Week | First touches | Follow-ups | Other work | Tasks |
+|---|---|---|---|---|
+| Preparation (two weeks before day 1) | 0 | 0 | Build and check the list with its consent records; send the authority pack and six questions to the lawyer; receive the answer to question 6 | T-0.1.1, T-0.1.3 |
+| 1 (days 1–7) | 60 `[C]` | 0 | Interviews booked by phone or introduction; stopwatch sheet and hand-run protocol | T-0.2.1, T-0.1.2, T-0.3.1, T-0.3.2 |
+| 2 (days 8–14) | 0 | about 54 `[D]` | Interviews (11 in all `[C]`); first demos | T-0.1.2, T-0.2.2 |
+| 3 (days 15–21) | 0 | 0 | Demos; interview gate checked (6 of 11 `[C]`); **message check on day 21**; first free tests if the lawyer's recording answers are in and agreements are signed | T-0.2.2, T-0.3.3 |
+| 4 (days 22–28) | 90 `[C]`, timing `[A]` | 0 | Demos; free tests | T-0.2.1, T-0.2.2, T-0.3.3 |
+| 5 (days 29–35) | 0 | about 81 `[D]` | Demos; free tests | T-0.2.2, T-0.3.3 |
+| 6–8 (days 36–60) | 0 | 0 | **Channel check on day 40**; free two-meeting tests for up to 5 brokerages `[C]`; measurement tables; pilot agreements and invoices; stop-rule memo on day 60 | T-0.3.3, T-0.3.4, T-0.4.1, T-0.4.2 |
+| 9–13 (days 61–90) | 0 | 0 | Memo closed by day 74 if it was provisional (12.9); hand-run delivery of the paid pilots, weekly table to each managing broker; Phase 1 only if the stop rule allows | T-0.4.2, T-0.4.3; T-1.1.1 to T-1.1.3 |
+
+The second wave of 150 first touches belongs to month 4 (weeks 14 to 17), and only if the T-0.1.1 count shows that a second 150 exist and the stop rule said continue.
+
+**Expected position at each point** (days counted from the first contact; cumulative unless stated)
+
+| | Day 30 | Day 60 | Day 90 |
+|---|---|---|---|
+| Distinct brokerages contacted | 150 `[C]` | 150 | 150 |
+| Replies | 6 to 15 `[D]`: the first cohort's 6 are due; the second cohort's follow-ups go out on days 29–33 and their replies are due by day 40 | 15 `[D]` | 15 |
+| Calls: discovery interviews | 11 `[C]` | 11 | 11 |
+| Calls: demos | about 3 `[D]` (the first cohort's; the second cohort's 4.5 are still to be booked) | 7.5 `[D]` | 7.5 |
+| Free tests running or done | first ones running | up to 5 brokerages `[C]` | up to 5 |
+| Paid pilots (agreement signed and CAD 299 paid) | 0 `[D]` (30-day sales cycle `[A-chat]`) | 1.875 `[D]` **if nothing slips**; see "Slack" below | 1.875, still being delivered |
+| Recurring paid accounts | 0 | 0 | 0; 1.3125 `[D]` are first billed in month 4 |
+| Revenue received | 0 | 1.875 × 299 = CAD 560.62 `[D]` | CAD 560.62 |
+| Cumulative cash from day 1, no founder pay | −2,925.00 `[D]` | −3,246.82 `[D]`; spend ceiling before revenue 3,725 `[D]` (4,125 from the start of preparation) | −4,112.45 `[D]` |
+| Cumulative cash from day 1, with founder pay | −8,925.00 `[D]` | −15,246.82 `[D]` | −22,112.45 `[D]` |
+| The same, including the preparation fortnight | −3,325.00 / −12,325.00 `[D]` | −3,646.82 / −18,646.82 `[D]` | −4,512.45 / −25,512.45 `[D]` |
+| Founder hours in the period | 49–73 `[D]`, after 14–22 `[D]` in preparation | 36–55 `[D]` | 22.5–37.5 `[D]` for pilot delivery, plus 20–30 `[A]` if Phase 1 starts |
+
+- **No month of the ramp moves.** The ramp counts months from the first contact; both cohorts are contacted in month 1, pilots are booked in month 2 and recurring accounts in month 4, exactly as in [section 7.6](#76-cash-required-during-the-acquisition-ramp). What moves is the calendar: everything is about 14 days `[A]` later than a plan that sent on the day the list was ready.
+- **Cost of the preparation fortnight**, which the ramp table does not contain: if the fixed costs are already running `[A]`, half a month is 0.5 × 800 = CAD 400 `[D]`, and with founder pay 0.5 × 6,000 = CAD 3,000 more `[D]`. The row above adds these: −2,925 − 400 = −3,325; −8,925 − 3,400 = −12,325; and the same 400 and 3,400 at days 60 and 90. The ceiling of CAD 3,725 becomes 3,725 + 400 = **CAD 4,125** counted from the start of preparation, and 15,725 + 3,400 = CAD 19,125 with founder pay `[D]`. The lawyer's fee is already the startup line of month 1; it is only paid earlier.
+- Hours, preparation: T-0.1.1 and T-0.1.3 = (6+8) to (10+12) = 14–22 `[D]`.
+- Hours, days 1–30: T-0.1.2, T-0.2.1, T-0.3.1, T-0.3.2 and half of T-0.2.2 = (16+20+3+4+6) to (24+30+5+6+8) = 49–73 `[D]`. Preparation and days 1–30 together are 63–95; the chat planned 70 for its first month `[C]`.
+- Hours, days 31–60: the other half of T-0.2.2, T-0.3.3, T-0.3.4, T-0.4.1, T-0.4.2 = (6+20+3+5+2) to (8+30+5+8+4) = 36–55 `[D]`. All three together are 99–150, the Phase 0 total in the effort summary.
+- Hours, days 61–90: T-0.4.3 is 24–40 hours per pilot over 60 days, so 12–20 per pilot per month; × 1.875 = 22.5–37.5 `[D]`. A pilot that starts before day 60 costs the same monthly rate from its start, which the day-60 column does not include.
+- **Slack.** The day-60 pilot count is a best case. The second cohort is contacted on days 22–26; a 30-day cycle `[A-chat]` ends on days 52–56, which is 4 to 8 days before day 60 `[D]`. The cycle itself is optimistic for this offer: a brokerage has to reply, see a demo, sign the hand-run agreement, hold two meetings that happen to fall in the window, see its table, sign and pay. Any slip moves a pilot past day 60 and lowers the number the stop rule reads, which biases the decision toward "stop". The 14-day close-out in 12.9 `[A]` is the slack this plan gives. A pilot paid on days 61–74 is booked in month 3 instead of month 2: CAD 299 and its costs move one month later and its first subscription invoice moves from month 4 to month 5; totals do not change, and the ramp table is not re-run for it.
+- The chat's own targets for the first four weeks (2 pilot agreements in week 3, 2 paying brokerages and CAD 500 of monthly revenue in week 4) `[C]` are not used here: checks 4 and 6 in [section 9.2](#92-checks-on-the-chats-rule) show they do not fit the 30-day cycle or the pilot price.
+- In the downside case of [section 8](#8-funnel-recomputed-from-distinct-reachable-prospects) the same activity yields 7.5 replies, 3.75 demos and 0.9375 paid pilots by day 60 and 0.469 recurring accounts in month 4 `[D]`, at the same spend.
+- What the money buys in acquisition terms is in [section 7.4](#74-acquisition-cost-including-founder-time): CAD 857.14 per converted subscriber in cash-like terms, CAD 3,362 to 4,819 with this plan's founder hours `[D]`.
+
+### 12.9 GTM stop rule
+
+**The product stop rule is the chat's rule in [section 9.1](#91-the-chats-rule-exactly-as-stated).** The chat's rule names no date. Evaluating it on day 60 after the first contact is the author's `[A]`, a "changed" row of the proposal in [section 9.3](#93-proposed-revision-a--a-change-to-the-chats-rule-not-a-restatement); the rest of that proposal applies only if the founder adopts it in writing. Nothing below changes a threshold. The rows marked `[A]` are added checkpoints for the *channel*, which the chat's rule does not separate from the product, and for timing.
+
+| What is judged | Number | Consequence | Label |
+|---|---|---|---|
+| Message (day 21) | 0, 1 or 2 replies from the first 60, counted on day 21, when replies to their follow-ups (sent on days 8–12) have had at least 5 business days to arrive; 6 are expected | Rewrite the first touch and lead with a phone call for the remaining 90, which go out in week 4. Not a stop. If the 10% rate is true this happens 6.2% of the time; at 5% it happens 42.3% of the time `[D]` (Poisson, means 6 and 3). Replies that arrive after day 21 would lower both figures; none are assumed. | `[A]` |
+| Channel (day 40) | Fewer than 8 replies from 150 distinct brokerages, counted on day 40, 5 business days after the last follow-up; 15 are expected | Cold outreach is dropped as the first channel: no second wave is sent this way, and the remaining pool is approached through the backup channel `[C]`. The product decision still waits for the memo. If the 10% rate is true this happens 1.8% of the time; at the downside's 5% it happens 52.5% of the time `[D]` (Poisson, means 15 and 7.5) | `[A]` |
+| Product: paid pilots | Fewer than 2 paid pilots after 150 contacts and 8 demos | Stop or pivot to self-managed councils | `[C]`; checks and the one-pilot proposal in section 9 |
+| Timing of that count | Day 60 after the first contact. If on day 60 a brokerage has a signed pilot agreement with the invoice unpaid, or a free test still running, and its payment could change the outcome, the memo is marked provisional and is closed on day 74 at the latest. No money is spent on Phases 1–6 in between. | Gives the count 14 days of slack without changing the threshold | `[A]`, both the date and the close-out |
+| Product: recording | Brokerages refuse recording as policy; the proposal puts a number on it (5 or more of the demoed brokerages, or more than half if fewer than 8 were demoed, counting those that cannot name two meetings with a recording bylaw) | Stop the recorded-audio product; dictated notes alone were not evaluated in chat | `[C]`; number `[A]` |
+| Product: the problem itself | Most interviewed managers say minutes take under 30 minutes; or the free tests show no net time saved after correction | Stop | `[C]`; second half `[A]`, from [section 10](#10-what-buyer-evidence-would-change-the-decision) |
+| Money | CAD 3,725 spent before revenue by day 60, without founder pay (CAD 4,125 counted from the start of preparation) | No further spend until the memo is written | `[A]`, [section 7.6](#76-cash-required-during-the-acquisition-ramp) and 12.8 |
+| Channel: the law | The lawyer's answer to question 6 is that cold email is not available on a published-address basis | Every first touch and follow-up is by phone or visit; the hours and reply rate are restated before day 1 | `[A]` |
+
+Consistency with the funnel: the channel number (8) is the downside's expected 7.5 replies rounded up, so a channel running at half the assumed reply rate is caught about half the time at day 40 instead of at day 60; the product number (2 paid pilots) sits just above the 1.875 the funnel expects, which [section 9.2](#92-checks-on-the-chats-rule) already reports as a weakness of the rule, and the timing of the count adds a second bias in the same direction (12.8, "Slack"). A channel that fails its check while the paid-pilot count still reaches 2 is not a product stop: it changes how the second 150 are reached, and the cost of the backup channel is not modelled.
+
+## 13. Sources and assumptions
 
 Date consulted for every row: **2026-11-10**. "Opened" means the page content was retrieved and read by the author's tools on that date.
 
@@ -422,6 +664,9 @@ Date consulted for every row: **2026-11-10**. "Opened" means the page content wa
 | PIPA | *Personal Information Protection Act*, SBC 2003 c. 63 (`…/03063_01`) | British Columbia | s. 4(2) responsibility for information not in custody; s. 6 consent; s. 7; s. 8 implied consent and opt-out notice; s. 10 notification of purposes; s. 23 access; s. 34 reasonable security; s. 35 retention at least 1 year after use in a decision, then destroy when no longer needed | Opened. Current to 2026-11-03. The page read contains no provision on storage outside Canada. |
 | OIPC-2022 | Office of the Information and Privacy Commissioner for BC, "Privacy guidelines for strata corporations and strata agents" (`oipc.bc.ca/guidance-documents/3632`) | British Columbia | Recording of meetings likely not authorized by PIPA without a bylaw; implied consent to be named in minutes; minutes need not include exact discussion; use unit or strata lot number for sensitive matters; disclosure to a property manager with contractual restriction; SPA authorizes collection to create minutes | Opened as PDF and text extracted by the author's own parser. Embedded creation timestamp is May 2022, matching the BC government page's description; the visible date was not confirmed. Guidance, not law. Two other OIPC URLs (documents 1455 and 1805) returned "file not found". |
 | RESR | *Real Estate Services Rules*, B.C. Reg. 209/2021 (`…/209_2021`) | British Columbia | s. 28 managing broker supervision and records; s. 30(e) confidentiality; s. 43(6)(f)–(g) service agreement terms on records and information; s. 88 strata management records (accounting records; minutes not listed); s. 91 electronic records; s. 92 retention at least 7 years, available at head office | Opened in two parts. Current to 2026-11-03. No rule read requires records to be stored in British Columbia. |
+| CASL | *An Act to promote the efficiency and adaptability of the Canadian economy by regulating certain activities that discourage reliance on electronic means of carrying out commercial activities…*, S.C. 2010, c. 23 ("Canada's anti-spam legislation"), Justice Laws (`laws-lois.justice.gc.ca/eng/acts/E-1.6/FullText.html`) | Canada (federal) | s. 1(1) electronic address; s. 1(2) commercial electronic message; s. 6(1) consent and form; s. 6(2) sender identification, contact information, unsubscribe mechanism; s. 6(3) contact information valid 60 days; s. 6(8) voice calls and voice recordings excluded; s. 10(9)(b) implied consent for a conspicuously published address; s. 11(1)–(3) unsubscribe mechanism, 60 days, effect within 10 business days; s. 13 onus of proving consent; s. 20(4) maximum penalty | Opened in full; page text extracted by the author's own parser and the cited subsections read directly. Current to 2026-10-19, last amended 2026-01-01. The author's reading, not legal advice. |
+| CASL-CRTC | *Electronic Commerce Protection Regulations (CRTC)*, SOR/2012-36 (`laws-lois.justice.gc.ca/eng/regulations/SOR-2012-36/FullText.html`) | Canada (federal) | s. 2(1) information to be set out: name, mailing address, and a telephone number, email address or web address; s. 2(2) link to a web page where including it is not practicable; s. 3 clearly and prominently, readily performed | Opened in full, same method. Current to 2026-10-19, last amended 2015-01-15. |
+| CASL-GIC | *Electronic Commerce Protection Regulations*, SOR/2013-221 (`laws-lois.justice.gc.ca/eng/regulations/SOR-2013-221/FullText.html`) | Canada (federal) | s. 3(a)(ii) messages between organizations that have a relationship; s. 3(d) messages on an electronic messaging service | Opened in full, same method. Current to 2026-10-19, last amended 2015-01-15. Other exclusions in s. 3 were read and do not fit a cold contact; s. 4 was not relied on. |
 | BCGov | Government of BC strata pages: "Strata property manager licensing" and "Information and record keeping" (`www2.gov.bc.ca`) | British Columbia | BCFSA licenses brokerages and individual managers under the *Real Estate Services Act*; each brokerage has a managing broker; minutes kept at least six years; stratas must comply with PIPA | Opened. Page dates July 2024. |
 | BCFSA | BCFSA licensing statistics and licence search (`bcfsa.ca`) | British Columbia | Count of brokerages licensed for strata management | **Blocked: HTTP 403 on every attempt. Unverified, no source consulted.** |
 | Otter | Otter.ai pricing page (`otter.ai/pricing`) | Vendor, USD | Plan prices and per-conversation limits | Opened. Vendor-advertised. |
@@ -435,6 +680,6 @@ Date consulted for every row: **2026-11-10**. "Opened" means the page content wa
 
 Claims carried from the chat that the author could **not** verify and that stay unverified: the CTV count of licensed managers; StrataPress pricing; the REMI Network advice that AI minutes be reviewed before distribution; the BCFSA priorities statement; the count of BC brokerages; every unit-economics input; every funnel rate.
 
-Not consulted by the author: OWASP ASVS and the WCAG 2.2 quick reference. The independent reviewer consulted OWASP ASVS 5.0.0 and the WCAG 2.2 Recommendation on 2026-11-10; requirement and criterion IDs in [TRD.md](TRD.md) and [design.md](design.md) are cited on the reviewer's reading, not the author's. BC statutory holidays used in the business-day calculation were not looked up: unverified, no source consulted (to be taken from the BC government list in T-5.1.2).
+Not consulted by the author: CRTC guidance on the anti-spam legislation and the telemarketing rules (the reviewer reports the CRTC's FAQ page returned HTTP 403); OWASP ASVS and the WCAG 2.2 quick reference. The independent reviewer consulted OWASP ASVS 5.0.0 and the WCAG 2.2 Recommendation on 2026-11-10; requirement and criterion IDs in [TRD.md](TRD.md) and [design.md](design.md) are cited on the reviewer's reading, not the author's. BC statutory holidays used in the business-day calculation were not looked up: unverified, no source consulted (to be taken from the BC government list in T-5.1.2).
 
 Exchange rates: only one conversion is used (section 4), at the chat's scenario rate 1 USD = 1.38 CAD `[A-chat]`, direction USD→CAD, a scenario assumption and not a sourced rate. All economics are in CAD per month.

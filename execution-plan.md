@@ -13,7 +13,7 @@ Owner roles: **Founder** (sales, product, operations), **Developer**, **Second r
 ```mermaid
 flowchart LR
   A["Phase 0, Milestones 0.1 to 0.3<br/>Evidence, outreach, demos,<br/>free two-meeting test by hand"] --> B["Milestone 0.4<br/>Pilot agreement and CAD 299 invoice"]
-  B --> G{"Stop rule<br/>day 60"}
+  B --> G{"Stop rule<br/>day 60 after first contact,<br/>closed by day 74 at the latest"}
   G -- "0 paid pilots, or recording refused" --> X["Stop or pivot"]
   G -- "exactly 1 paid pilot" --> Y["Stop or pivot under the chat's rule.<br/>Inconclusive only if the founder<br/>adopts the proposal in Decision section 9"]
   G -- "2 or more paid pilots" --> P1["Phase 1<br/>Specification and design"]
@@ -43,8 +43,9 @@ Why these are on the path: T-1.1.1 supplies the fixtures every later acceptance 
 | Buildings with a recording bylaw, or acceptance of dictated notes | T-0.3.3, T-0.4.3, T-6.2.2 | Permission |
 | Written agreement to hand-run processing (who must sign: T-0.3.2) | T-0.3.3 | Permission |
 | Lawyer's review of authority wording and of who must agree | T-0.1.3, T-0.3.2, T-3.1.1 | External |
+| Lawyer's written answer to question 6 (outreach and anti-spam law) | T-0.2.1 | External |
 | Pilot agreement signed and CAD 299 invoice paid | T-0.4.2, T-0.4.3 | Payment |
-| Stop-rule result on day 60 | Phases 1–6 | Buyer decision |
+| Stop-rule result on day 60 after the first contact (day 74 at the latest if the memo is provisional) | Phases 1–6 | Buyer decision |
 | Bylaws and rules for each pilot building | T-0.4.3, T-6.2.1 | Sample data |
 | Stopwatch baseline timings from each pilot manager | T-0.3.3, T-0.4.3, T-6.2.2 | Sample data |
 | VPS location confirmed in Canada | T-6.1.1 | Infrastructure |
@@ -52,6 +53,8 @@ Why these are on the path: T-1.1.1 supplies the fixtures every later acceptance 
 ## Phase 0 — Validation by hand (no application)
 
 Everything in this phase is done with a spreadsheet, a stopwatch sheet, Word, and models run on the founder's own machine. No application code is written.
+
+The go-to-market plan in [Decision.md](Decision.md#12-go-to-market-plan) is carried out by these tasks, all before any build task (the first is T-2.1.1): list building T-0.1.1; outreach T-0.2.1; discovery calls T-0.1.2 (interviews) and T-0.2.2 (demos with a qualification record); free test T-0.3.2 to T-0.3.4; pilot agreement and invoice T-0.4.1; stop-rule memo T-0.4.2; pilot delivery and the step to a recurring account T-0.4.3. Each task's owner is in its row; exit criteria are stated per milestone.
 
 ### Milestone 0.1 — Market and recording-authority evidence
 
@@ -63,12 +66,12 @@ Everything in this phase is done with a spreadsheet, a stopwatch sheet, Word, an
 
 | ID | Links | Owner | Est. h | Deliverable | Acceptance check |
 |---|---|---|---|---|---|
-| T-0.1.1 | Decision §8; M-3 | Founder | 6–10 | Spreadsheet of distinct BC brokerages licensed for strata management, keyed by BCFSA licence number, with region and source | A second person picks 10 rows at random and finds each in the BCFSA search; no licence number appears twice; total is written into `Decision.md` with the date |
+| T-0.1.1 | Decision §8, §12.3; M-3 | Founder | 6–10 | Spreadsheet of distinct BC brokerages licensed for strata management, keyed by BCFSA licence number, with region and source | A second person picks 10 rows at random and finds each in the BCFSA search; no licence number appears twice; every email address has its publication record or the row is marked "phone or visit only"; total is written into `Decision.md` with the date |
 | T-0.1.2 | PRD problem statement; M-1 baseline | Founder | 16–24 | Notes from 8 managers and 3 managing brokers `[C]` using the discovery questions below | 11 dated notes; a one-page tally of minutes time, recording policy, bylaw-question volume |
-| T-0.1.3 | MH-03, MH-10; Decision §4 | Founder, Lawyer | 8–12 plus external fee (not estimated) | Authority pack: notice wording, consent wording, checklist for finding a recording bylaw, "not legal advice" wording, and written answers to the five questions below | Lawyer's written comments received; each of the three recording bases is marked acceptable, acceptable with changes, or not acceptable; each question has an answer |
+| T-0.1.3 | MH-03, MH-10; Decision §4 | Founder, Lawyer | 8–12 plus external fee (not estimated) | Authority pack: notice wording, consent wording, checklist for finding a recording bylaw, "not legal advice" wording, and written answers to the six questions below | Lawyer's written comments received; each of the three recording bases is marked acceptable, acceptable with changes, or not acceptable; each question has an answer |
 
 Subtasks:
-- **T-0.1.1:** (a) export or copy the BCFSA search results for the strata category by region; (b) remove branch offices of the same legal entity; (c) match PAMA, CHOA and CCI Vancouver listings to add a named contact; (d) mark which meet "10 or more strata corporations" where public; (e) record the count and the method.
+- **T-0.1.1:** (a) export or copy the BCFSA search results for the strata category by region; (b) remove branch offices of the same legal entity; (c) match PAMA, CHOA and CCI Vancouver listings to add a named contact, and for each email address record the page on which the recipient or their brokerage published it, the date seen, and that no statement refusing unsolicited messages was beside it; (d) mark which meet "10 or more strata corporations" where public; (e) record the count and the method; (f) mark every brokerage without such a record "phone or visit only".
 - **T-0.1.2:** (a) book interviews; (b) ask the discovery questions; (c) ask each manager to time two real sets of minutes with the baseline sheet from T-0.3.1; (d) tally; (e) compare with the week-1 gate.
 - **T-0.1.3:** (a) draft from the OIPC guidance `[S: OIPC-2022]`; (b) send to the lawyer with the questions; (c) revise; (d) fix the wording version label used later in `recording_authorizations.notice_text_version`.
 
@@ -82,29 +85,30 @@ Subtasks:
 6. Which of your buildings have a filed bylaw that allows meetings to be recorded? `[A]`
 7. Will you time your next two sets of minutes with our sheet? `[A]`
 
-**Questions for the lawyer in T-0.1.3** `[A]`:
+**Questions for the lawyer in T-0.1.3** `[A]`. Question 6 is asked first and its answer is the entry condition of Milestone 0.2:
 
 1. Is a filed recording bylaw sufficient authority to record a council meeting and a general meeting, and what must the bylaw say?
 2. Without such a bylaw, is the documented express consent of every person present sufficient?
 3. Do a manager's own dictated notes, made after the meeting, need any authority beyond the Act's authority to keep minutes?
 4. Who must agree in writing before a recording is processed by an outside service: the strata corporation (through its council), the brokerage as its agent, or both? What must the brokerage's service agreement with the strata say?
 5. Does quoting a bylaw clause in answer to a manager's question risk being treated as legal advice, and what wording avoids that?
+6. Outreach under Canada's anti-spam legislation, on the author's reading in [Decision.md](Decision.md#124-channel-and-sequence): (a) may a first-touch email be sent to a managing broker on implied consent where the address is published on the brokerage's own website with no refusal statement, and does a listing in an association's member directory count as published by the recipient; (b) is the sender and unsubscribe block in the draft messages sufficient; (c) is a LinkedIn connection request with a note a commercial electronic message, and can it be sent; (d) do any telemarketing rules apply to a phone call to a brokerage?
 
 ### Milestone 0.2 — Outreach and demos
 
-- **Entry conditions:** T-0.1.1 list exists (outreach can start on the first 60 rows while the list is completed).
-- **Dependencies:** none external.
+- **Entry conditions:** the lawyer's written answer to question 6 of T-0.1.3 is received, and the T-0.1.1 list exists with its publication records. No first touch by any channel is made before both. (Outreach can start on the first 60 rows while the rest of the list is completed.)
+- **Dependencies:** the lawyer's answer to question 6 (external).
 - **Owner:** Founder.
 - **Measurable outcome:** 150 distinct brokerages contacted; demos held; every reply, demo and refusal logged.
-- **Exit criteria:** the sales log shows 150 distinct licence numbers contacted and the number of demos held; each demoed brokerage's recording policy and recording-bylaw count is recorded.
+- **Exit criteria:** the sales log shows 150 distinct licence numbers contacted, the number of replies and the number of demos held; each demoed brokerage's recording policy and recording-bylaw count is recorded; the channel check is recorded as passed or failed.
 
 | ID | Links | Owner | Est. h | Deliverable | Acceptance check |
 |---|---|---|---|---|---|
-| T-0.2.1 | Decision §8; M-3 | Founder | 20–30 | Outreach to 150 distinct brokerages `[C]` (60 in week 1, 90 in week 3 `[C]`) offering the free two-meeting test; sales log keyed by licence number | Log has 150 distinct licence numbers with date, channel, contact role and outcome; no brokerage counted twice |
-| T-0.2.2 | Decision §5, §9; M-3, M-11 | Founder | 12–16 | Demos to managing brokers (the chat expects 7–8 `[C]`), each ending with a qualification record | For every demo: buildings managed, who writes minutes, recording policy, number of buildings with a recording bylaw, two candidate meetings named or "none", decision on the free test |
+| T-0.2.1 | Decision §8, §12.4, §12.5; M-3 | Founder | 20–30 | Outreach to 150 distinct brokerages `[C]` (60 in week 1 `[C]`, 90 in week 4 `[A]`; the chat's plan said week 3 `[C]`) offering the free two-meeting test; sales log keyed by licence number, with a suppression list | Log has 150 distinct licence numbers with date, channel, contact role, minutes spent and outcome; no brokerage counted twice; every email sent has a publication record in the T-0.1.1 list and carries the sender and unsubscribe block; nobody on the suppression list was contacted again |
+| T-0.2.2 | Decision §5, §9, §12.7; M-3, M-11 | Founder | 12–16 | Demos to managing brokers (the chat expects 7–8 `[C]`), each ending with a qualification record | For every demo: buildings managed, who writes minutes, recording policy, number of buildings with a recording bylaw, two candidate meetings named or "none", decision on the free test |
 
 Subtasks:
-- **T-0.2.1:** (a) message and call script built from the buying triggers in `Decision.md`; (b) contact the first 60; (c) log replies; (d) contact the remaining 90; (e) follow up once after 5 business days.
+- **T-0.2.1:** (a) first-touch email, follow-up and call script taken from [Decision.md](Decision.md#125-message) and the buying triggers, changed as the lawyer's answer to question 6 requires; email only to addresses with a publication record, phone for the rest, no LinkedIn messages; (b) contact the first 60 in week 1; (c) log replies, declines and unsubscribe requests, and act on each request the same day; (d) contact the remaining 90 in week 4, after the message check; (e) follow up once after 5 business days; (f) on day 21 (message check) and day 40 (channel check), compare the reply count with [Decision.md](Decision.md#129-gtm-stop-rule) and write the result in the sales log.
 - **T-0.2.2:** (a) demo using a synthetic recording and its hand-made draft; (b) show the correction step and the stopwatch sheet; (c) ask the qualification questions; (d) record recording refusals in the exact words used; (e) book the free test.
 
 ### Milestone 0.3 — Free two-meeting test by hand (the decisive measurement)
@@ -145,19 +149,19 @@ Subtasks:
 - **Entry conditions:** at least one brokerage has seen its T-0.3.4 table.
 - **Dependencies:** pilot agreement and data-handling terms (drafted in T-0.4.1); payment.
 - **Owner:** Founder.
-- **Measurable outcome:** number of pilot agreements signed and CAD 299 invoices paid by day 60 after first contact.
-- **Exit criteria:** the stop-rule memo (T-0.4.2) is written on day 60 and states one of the three outcomes in [Decision.md](Decision.md#9-stop-rule-checked-against-conversions-sample-size-and-sales-cycle).
+- **Measurable outcome:** number of pilot agreements signed and CAD 299 invoices paid by day 60 after first contact (by day 74 where the memo is provisional).
+- **Exit criteria:** the stop-rule memo (T-0.4.2) is written on day 60 after the first contact (marked provisional and closed by day 74 if a signed pilot is unpaid or a free test is still running and could change the outcome `[A]`) and states one of the three outcomes in [Decision.md](Decision.md#9-stop-rule-checked-against-conversions-sample-size-and-sales-cycle).
 
 | ID | Links | Owner | Est. h | Deliverable | Acceptance check |
 |---|---|---|---|---|---|
-| T-0.4.1 | Decision §5; M-3 | Founder | 5–8 | Pilot agreement (60 days, 3 managers, CAD 299 total `[C]`, hand-run delivery, what is measured), data-handling terms, invoice | Agreement states what is delivered, the start date rule, the meeting cap, and deletion terms; a paid pilot is counted only when the agreement is signed **and** the invoice is paid |
-| T-0.4.2 | Stop rule; M-3 | Founder | 2–4 | Stop-rule memo on day 60 | Memo states contacts (distinct), demos, paid pilots, recording refusals, cash spent against the cap, and the outcome under the chat's rule and under the proposal |
+| T-0.4.1 | Decision §5, §12.6; M-3 | Founder | 5–8 | Pilot agreement (60 days, 3 managers, CAD 299 total `[C]`, hand-run delivery, what is measured), data-handling terms, invoice | Agreement states what is delivered, the start date rule, the meeting cap, and deletion terms; a paid pilot is counted only when the agreement is signed **and** the invoice is paid |
+| T-0.4.2 | Stop rule (Decision §9, §12.9); M-3 | Founder | 2–4 | Stop-rule memo on day 60 after the first contact; if provisional, closed by day 74 `[A]` | Memo states contacts (distinct), replies, demos, paid pilots, recording refusals, cash spent since the start of preparation against the cap of CAD 4,125 without founder pay (CAD 3,725 counted from the first contact; [Decision.md](Decision.md#76-cash-required-during-the-acquisition-ramp)), the result of the channel check, and the outcome under the chat's rule and under the proposal |
 | T-0.4.3 | MH-05, MH-06, MH-07, MH-13; M-1, M-2 | Founder | 24–40 per pilot brokerage | The 60-day paid pilot delivered by hand under the T-0.3.2 protocol: next-business-morning drafts, quoted-clause answers to bylaw questions within 1 business day, weekly measurement table | Every pilot meeting has a row in the measurement table; M-2 is computed for each; the managing broker receives the table weekly |
 
 Subtasks:
 - **T-0.4.1:** (a) draft the agreement from the lawyer-reviewed pack; (b) agree which upcoming meetings have recording authority; (c) collect bylaws for those buildings; (d) issue the invoice; (e) record the payment date.
-- **T-0.4.2:** (a) count from the sales log; (b) apply the rule; (c) record what was spent; (d) update the assumptions in `Decision.md` that now have evidence.
-- **T-0.4.3:** (a) weekly schedule of pilot meetings; (b) per meeting, the T-0.3.3 steps; (c) answer bylaw questions by quoting the clause from the supplied bylaws or saying none was found; (d) weekly table; (e) end-of-pilot summary and conversion conversation.
+- **T-0.4.2:** (a) count from the sales log, listing separately any signed-but-unpaid pilot and any free test still running; (b) apply the rule, or mark the memo provisional and close it by day 74; (c) record what was spent; (d) update the assumptions in `Decision.md` that now have evidence.
+- **T-0.4.3:** (a) weekly schedule of pilot meetings; (b) per meeting, the T-0.3.3 steps; (c) answer bylaw questions by quoting the clause from the supplied bylaws or saying none was found; (d) weekly table; (e) end-of-pilot summary and conversion conversation in the last week: building count, tier, signed monthly subscription order, first monthly invoice at the end of the pilot, as set out in [Decision.md](Decision.md#126-pilot-offer-and-conversion); the account counts as recurring when that invoice is paid.
 
 Hand-run capacity `[A]`: one person can deliver about 12 meetings per brokerage per month and at most 2 pilot brokerages at once. The pilot agreement states this cap. The chat set no cap; it is a proposal.
 
@@ -412,7 +416,7 @@ All ranges `[A]`, summed from the task tables above `[D]`.
 
 The chat's development estimate is 130 hours / 17 days `[A-chat]`. The build range here is 38% to 115% higher `[D]`. The difference is mostly isolation tests, authentication hardening, retention and deletion, restore drill and the review workspace. This is not reconciled; the 130-hour figure should not be used for planning until one of the two is revised.
 
-The chat plans 70 founder hours for the first month `[C]`. The validation tasks up to the stop-rule memo sum to 99–150 hours over about 60 days `[D]`, also not reconciled; the effect on loaded acquisition cost is shown in [Decision.md](Decision.md#74-acquisition-cost-including-founder-time).
+The chat plans 70 founder hours for the first month `[C]`. The validation tasks up to the stop-rule memo sum to 99–150 hours over about 60 days from the first contact plus a preparation period of about 14 days `[D]`, `[A]`, also not reconciled; the effect on loaded acquisition cost is shown in [Decision.md](Decision.md#74-acquisition-cost-including-founder-time).
 
 ## Proposed scripts
 
