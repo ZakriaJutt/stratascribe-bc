@@ -1,0 +1,15 @@
+line-length = 120
+target-version = "py312"
+cache-dir = "../var/cache/ruff"
+src = ["../packages", "../apps", "../tests"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "BLE", "RUF"]
+ignore = ["S101", "RUF001", "RUF002", "RUF003"]
+
+[lint.per-file-ignores]
+"../tests/**" = ["S105", "S106", "S311"]
+"../packages/core/migrations/**" = ["E501", "S608"]
+
+[lint.isort]
+known-first-party = ["core", "rules", "ai", "docs", "api", "worker", "tests"]
