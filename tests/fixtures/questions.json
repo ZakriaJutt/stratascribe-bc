@@ -1,0 +1,37 @@
+{
+  "_note": "Synthetic questions for ZZS 9001 (T-1.1.1 owns the full 30-question set; this is the B1 stand-in). The fake model is a word-overlap heuristic, so these exercise the retrieval -> validator -> refusal pipeline, not model quality.",
+  "answerable": [
+    ["When must strata fees be paid each month?", "1(1)"],
+    ["What is the fine for late payment of fees?", "1(2)"],
+    ["How many dogs can I keep?", "2(1)"],
+    ["Must dogs be leashed in common areas?", "2(2)"],
+    ["Are aquarium fish permitted?", "2(3)"],
+    ["Is smoking allowed on balconies?", "3(2)"],
+    ["Are charcoal barbecues allowed on balconies?", "3(3)"],
+    ["Do I need council approval to alter the structure of the building?", "4(1)"],
+    ["What hours is noisy renovation work permitted?", "4(2)"],
+    ["How many parking stalls does each strata lot get?", "5(1)"],
+    ["How long can visitor parking be used?", "5(2)"],
+    ["Can unauthorized vehicles be towed?", "5(3)"],
+    ["How far ahead must the elevator be booked before moving?", "6(1)"],
+    ["Is there a move-in fee?", "6(2)"],
+    ["Are short-term rentals allowed?", "7(1)"],
+    ["What must an owner who rents give the tenant?", "7(2)"],
+    ["May the strata manager audio record council meetings?", "8(1)"],
+    ["When must a recording be deleted?", "8(2)"],
+    ["Where must garbage be placed?", "9(1)"],
+    ["Who is liable for the insurance deductible?", "11(1)"]
+  ],
+  "unanswerable": [
+    "Can I install solar panels on my roof?",
+    "Is there a limit on the number of bicycles in storage lockers?",
+    "What colour may I paint my front door?",
+    "Are hot tubs permitted on patios?",
+    "Can owners operate a daycare business from home?",
+    "Is there a swimming pool schedule?",
+    "May I install an electric vehicle charger in my stall?",
+    "What are the rules for drones over the courtyard?",
+    "Can I hang laundry outside my window?",
+    "Are trampolines allowed in the play area?"
+  ]
+}
