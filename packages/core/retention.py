@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from core import audit, clock, storage
 from core import logging as clog
@@ -51,5 +51,7 @@ def sweep() -> dict[str, int]:
             abandoned += 1
             audit.record(s, actor, "audio.deleted", brokerage_id=a.brokerage_id, strata_id=a.strata_id,
                          target_type="audio_asset", target_id=a.id, details={"reason": "incomplete_upload"})
+        purged = int(s.execute(text("SELECT app_purge_idempotency()")).scalar() or 0)  # stored responses, 24 h
     log.info("retention sweep finished", extra={"count": deleted})
-    return {"deleted": deleted, "object_missing": missing, "abandoned_uploads": abandoned}
+    return {"deleted": deleted, "object_missing": missing, "abandoned_uploads": abandoned,
+            "idempotency_purged": purged}

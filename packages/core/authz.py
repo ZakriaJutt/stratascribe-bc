@@ -71,6 +71,7 @@ def locate(session: Session, actor: Actor, kind: str, target_id: uuid.UUID, *, b
         raise AccessDenied(kind, target_id, strata, "broker_only")
     if not can_access_building(session, actor, strata):
         raise AccessDenied(kind, target_id, strata, "not_assigned")
+    session.info.setdefault("located_strata", strata)  # scopes a stored idempotent response (B1-001)
     return Located(kind, target_id, strata)
 
 
@@ -97,7 +98,6 @@ def record_denial(actor: Actor, exc: Exception) -> None:
             )
         elif isinstance(exc, ForeignOrMissing):
             corr = uuid.UUID(clog.correlation_id() or clog.new_correlation_id())
-            s.execute(
-                text("SELECT app_record_foreign_denial(:k, :i, :a, :c)"),
-                {"k": exc.kind, "i": exc.target_id, "a": actor.user_id, "c": corr},
-            )
+            # The function takes the actor from the session, never from a parameter (B1-009).
+            s.execute(text("SELECT app_record_foreign_denial(:k, :i, :c)"),
+                      {"k": exc.kind, "i": exc.target_id, "c": corr})
