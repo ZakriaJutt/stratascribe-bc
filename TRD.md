@@ -191,7 +191,7 @@ All bodies JSON unless noted. All mutating calls accept an `Idempotency-Key` hea
 
 | Job | Trigger | Timeout | Retries | Idempotency |
 |---|---|---|---|---|
-| `transcribe` | Upload complete and processing requested | 4 × audio duration, minimum 30 minutes `[A]` | 3, backoff 1, 5, 15 minutes | Key = audio asset SHA-256 + model ID; a finished transcript for that key is reused |
+| `transcribe` | Upload complete and processing requested | 4 × audio duration, minimum 30 minutes `[A]` | 3, backoff 1, 5, 15 minutes | Key = audio asset SHA-256 + model ID, unique within one brokerage, building and meeting (B1-002); the same file in another meeting or brokerage gets its own job and transcript |
 | `draft_minutes` | Transcript stored | 15 minutes `[A]` | 3 | Key = transcript ID + prompt version + model ID |
 | `index_bylaws` | Document uploaded | 10 minutes | 3 | Key = document SHA-256 + parser version |
 | `export` | Export requested | 2 minutes | 2 | Key = draft version + format |
@@ -263,7 +263,7 @@ The model's reading of the audio ("carried", "12 in favour") only pre-selects a 
 | Council meeting | members present in person, council size | present ≥ 1 for a council of 1; ≥ 2 for 2, 3 or 4; ≥ 3 for 5 or 6; ≥ 4 for 7 | `[S: SPA-SB]` s. 16(1)–(2), unless amended |
 | Building override | any of the above | As the building's own bylaw says, entered by the manager with a clause citation | The building's filed bylaws |
 
-The quorum statement in the minutes is computed from the numbers the manager confirms on the attendance card. If the manager knows quorum was established but has no numbers (rare), they can attest "quorum declared by the chair" in the same way as a declared outcome.
+The quorum statement in the minutes is computed from the numbers the manager confirms on the attendance card. Stored on the `quorum` item (schema.md `minute_items`, B1-006): basis, the statement the minutes record (established or not), votes or members present, eligible votes or council size, and the rules result (required number, met, rule, formula, rules version). Core code re-runs the rule on every save and at approval; approval is refused while a quorum item is unreviewed or its recorded statement contradicts the computed result. If the manager knows quorum was established but has no numbers (rare), they can attest "quorum declared by the chair" in the same way as a declared outcome.
 
 The threshold for each counted motion is chosen by the manager from a list; the model may suggest one but the suggestion is shown as a suggestion. A rule set has a version; the version used is stored with each computed result. These rules were written from the author's reading of the sources on 2026-11-10 through a summarising tool and must be checked against the statute text by a second person in T-4.1.2 before any real minutes rely on them.
 
@@ -274,7 +274,7 @@ The threshold for each counted motion is chosen by the manager from a list; the 
 | Transcription (Whisper large-v3) | Audio to timestamped text segments | Speaker identity (labels are "Speaker 1…" until the manager names them) | Manager hears audio beside any item | Retry; then "transcription failed" with the option to re-upload or switch to dictated notes |
 | Minutes extraction (language model, JSON schema) | Propose items: type, text, mover, seconder, spoken counts, spoken outcome, each with transcript segment IDs | Vote result, quorum, threshold, approval | Every motion must be marked reviewed by the manager | If output fails schema validation twice, show transcript with an empty template; the manager can still write minutes and time is still measured |
 | Citation on a minute item (same retrieval and validator as answers) | Suggest the clause a motion or discussion referred to | Attaching it: a suggestion is stored only as a suggestion until the manager confirms, replaces or removes it | Manager confirms each citation; changes are `citation` corrections | No suggestion; the manager can attach one from the lookup panel |
-| Bylaw answer (retrieval, then language model) | Select clauses and compose a short answer that quotes them | Deciding to show the answer | A validator shows the answer only if each quote is an exact substring of the stored clause and the clause belongs to this building's current confirmed document or the statute set; otherwise "No supporting clause found" (MH-10) | Search results only |
+| Bylaw answer (retrieval, then language model) | Select clauses and compose a short answer that quotes them | Deciding to show the answer | A validator shows the answer only if each quote is a meaningful verbatim span of the stored clause (at least 20 characters and 4 words `[A]`, on word boundaries; B1-004) and the clause belongs to this building's current confirmed document or the statute set; otherwise "No supporting clause found" (MH-10) | Search results only |
 
 **Evaluation fixtures (synthetic, built in T-1.1.1).** Six scripted meetings recorded by volunteers: two council meetings, two AGMs, one SGM with a 3/4 vote that fails by one vote, one meeting with heavy cross-talk and a withdrawn motion. Each has a hand-made answer key (motions, movers, seconders, counts). One synthetic bylaw set of about 45 clauses and 30 questions: 20 answerable with a known clause, 10 with no supporting clause. Scores tracked per model version: motion recall and precision, exact-match rate on mover and seconder, count accuracy, citation validity (must be 100%), refusal rate on the 10 unanswerable questions (target 100% `[A]`).
 
@@ -519,6 +519,7 @@ Accepted debt for the pilot: single host; manual invoicing; one brokerage per us
 - **Bylaw upload** accepts plain text as JSON in B1 (`POST /buildings/{id}/bylaw-documents` with `text`), split synchronously; multipart PDF/DOCX upload, scanning and the `index_bylaws` job are not built.
 - **Upload parts** are appended with `PATCH /uploads/{id}?offset=N` (body = bytes); a wrong offset returns 409 with `received_bytes`. Malware scanning is not built.
 - **System context.** The reconciler, job leasing and retention sweep use `app.role = 'system'` on the application role instead of a separate `app_system` database role (schema.md "B1 implementation notes").
+- **Review round 1 (2026-11-11).** Mutating requests need `Origin` or, failing that, `Referer` equal to `PUBLIC_BASE_URL` (B1-010); unexpected errors and invalid parameters return the JSON error envelope with a correlation ID (B1-011); audio is streamed in chunks with RFC 9110 single ranges, 400 for a malformed range and 416 for one outside the file (B1-007); `rules-2026.11.2` adds the required number to quorum results (B1-006).
 - **Model output never sets an outcome.** In B1 the extraction's suggested method is kept only in `ai_suggestion` (`suggested_method`); `outcome_method` stays empty until the manager chooses, which is stricter than "pre-selects a method" above.
 
 ## 12. Glossary
