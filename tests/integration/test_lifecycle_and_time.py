@@ -39,13 +39,13 @@ def test_i9_sweep_deletes_expired_audio_and_is_safe_twice(world: World, as_user:
     storage.store().delete(assets[0][1])  # one object already missing
     owner_exec("UPDATE audio_assets SET delete_after = now() - interval '1 hour'")
     first = retention.sweep()
-    assert first == {"deleted": 10, "object_missing": 1, "abandoned_uploads": 0}
+    assert first == {"deleted": 10, "object_missing": 1, "abandoned_uploads": 0, "idempotency_purged": 0}
     assert not [k for k in storage.store().list_prefix("b/") if "/audio/" in k]
     events = owner_exec("SELECT count(*) FROM audio_assets WHERE deleted_at IS NOT NULL")
     assert events[0][0] == 10
     assert owner_exec("SELECT count(*) FROM audit_events WHERE action = 'audio.deleted'")[0][0] == 10
     second = retention.sweep()
-    assert second == {"deleted": 0, "object_missing": 0, "abandoned_uploads": 0}
+    assert second == {"deleted": 0, "object_missing": 0, "abandoned_uploads": 0, "idempotency_purged": 0}
     assert owner_exec("SELECT count(*) FROM audit_events WHERE action = 'audio.deleted'")[0][0] == 10
 
 
