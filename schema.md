@@ -232,7 +232,7 @@ Sens. L.
 | reopen_reason | text | yes | — | Required when `reopened_from` is set |
 | content_hash | bytea | yes | — | Set at approval over the canonical rendering |
 
-A trigger rejects any UPDATE to an approved version or its items, with one exception: `status` may change from `approved` to `superseded` (and nothing else in the row) when a reopened version is approved. Sens. **H**.
+A trigger rejects any UPDATE to an approved version or its items, with one exception: `status` may change from `approved` to `superseded` (and nothing else in the row) when a reopened version is approved. Sens. **H**. **B1-012 (review round 2):** a version can only be created as a draft with no content hash (BEFORE INSERT trigger); the application role has no UPDATE on `minutes_versions` and no INSERT on `status`; the only path to `approved` (and to `superseded` for a reopened predecessor) is the SECURITY DEFINER function `app_approve_version(version_id, content_hash)`, which checks brokerage and building access itself. Deferred constraint triggers on INSERT and UPDATE require an approved version to have an `approvals` row, a content hash and a reviewed quorum item; an `approvals` row requires its version approved with a reviewed quorum item at commit.
 
 ### minute_items
 

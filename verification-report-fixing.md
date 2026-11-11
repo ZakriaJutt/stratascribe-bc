@@ -165,10 +165,10 @@ Issues the author found and fixed while cross-checking the ten files before the 
 
 | Command | What it does | Result |
 |---|---|---|
-| `make test` | Drops and re-creates the `stratascribe_test` schema, runs migrations 0001-0005 from zero, then `pytest` over `tests/` | **115 passed, 0 failed** (11.8 s), after review round 1 and the lead's quorum ruling (92 before the fixes) |
+| `make test` | Drops and re-creates the `stratascribe_test` schema, runs migrations 0001-0006 from zero, then `pytest` over `tests/` | **119 passed, 0 failed** (12.3 s), after review round 2 (92 before round 1, 115 after round 1 and the quorum ruling) |
 | `make lint` | ruff (pyflakes, pycodestyle, isort, bugbear, bandit subset) over `packages`, `apps`, `tests` | All checks passed |
-| `make typecheck` | mypy `--strict` over `packages`, `apps` | No issues in 53 source files |
-| `make check-migrations` | Exactly one Alembic head | Pass (head `0005`) |
+| `make typecheck` | mypy `--strict` over `packages`, `apps` | No issues in 54 source files |
+| `make check-migrations` | Exactly one Alembic head | Pass (head `0006`; it was `0005` at the round-2 retest, and the round-2 request named `0004` in error) |
 | `make seed` then `make dev` | Seeds the dev database; starts worker and API directly; polls `/readyz` | `/readyz` ready: database, configuration (API and worker fingerprints equal), Redis, storage all `ok` |
 
 The TRD names no linter or type checker; ruff and mypy were chosen for B1.
@@ -284,6 +284,30 @@ Independent review `_coordination/review/stratascribe-bc-b1-round1.md`: 0 blocke
 ### Lead ruling: a reviewed quorum item is required (2026-11-11)
 
 The lead ruled that minutes cannot be approved without a reviewed, consistent quorum item. Implemented: the worker adds an empty quorum item to every draft; `core.approval` refuses with `quorum_missing` when none exists and with `items_not_ready` while one is unreviewed or contradictory; migration 0005 adds a deferred constraint trigger refusing `draft → approved` on `minutes_versions` without a reviewed quorum item, and the explicit basis and statement `not_recorded` (attested), whose fixed wording "Quorum: not recorded. The number of votes present was not available to the manager who prepared these minutes." is returned as the item's `statement_text` and included in the approval content hash. Word/PDF export is not built, so "printed" means the stored minutes output and hash, not a file. Tests: `test_approval_refused_without_any_quorum_item` (API 409 and the database trigger), `test_quorum_not_recorded_is_explicit_and_printed`; both pass. Documents: PRD MH-06 and MH-08 (the approval rule lives in MH-08; MH-10 concerns bylaw answers and has no quorum content, so it was not changed), App-flow S-10, TRD quorum rules, schema.md `minute_items`.
+
+### Review round 2 (retest, 2026-11-11)
+
+Reviewer's round-2 verdicts, copied unchanged from `_coordination/review/stratascribe-bc-b1-verdicts.json` (round 2, commit `94bd8cd`; reproduced: make_test "115 passed", lint "pass", typecheck "pass (53 files)", migration_head "0005", reviewer_adversarial "35 collected, 35 passed"):
+
+| ID | Verdict |
+|---|---|
+| B1-001 | Closed |
+| B1-002 | Closed |
+| B1-003 | Closed |
+| B1-004 | Closed |
+| B1-005 | Closed |
+| B1-006 | Closed |
+| B1-007 | Closed |
+| B1-008 | Closed |
+| B1-009 | Closed |
+| B1-010 | Closed |
+| B1-011 | Closed |
+
+New finding: B1-012 (major): "minutes_versions can be INSERTed directly with status 'approved' (no quorum item, no approval row); the 0005 quorum trigger and the immutability trigger cover UPDATE only". Retest condition: "INSERT with status <> 'draft' refused at database level; reviewer case N2 insert raises".
+
+Reviewer notes, unchanged: "Round-1 '36 cases' was a reviewer counting error; the script collected 31 (20 functions, one parametrised x11)." "The retest request named head 0004; the actual head is 0005 and the verification report says so."
+
+**B1-012: fixed after retest, not yet re-reviewed.** Migration 0006: BEFORE INSERT trigger (a version is born a draft with no content hash); `REVOKE INSERT, UPDATE` on `minutes_versions` from `stratascribe_app`, then INSERT granted on every column except `status`; `app_approve_version` (SECURITY DEFINER, checks brokerage and building) is the only path to `approved`/`superseded`; deferred constraint triggers on INSERT and UPDATE of `minutes_versions` (approved needs an approval row, a content hash and a reviewed quorum item) and on INSERT of `approvals` (needs its version approved with a reviewed quorum item). `core.approval` calls the function and no longer row-locks the version (the meeting row lock serialises approvals). Tests in `tests/integration/test_review_round2.py`: `test_b1_012_direct_insert_as_approved_is_refused`, `test_b1_012_insert_draft_then_update_to_approved_is_refused`, `test_b1_012_approval_row_without_quorum_is_refused`, `test_b1_012_normal_approval_and_reopen_still_work`; all pass. Reviewer's round-2 script, run unchanged after the fix: 35 collected, 35 passed. Head is now `0006`. Documents: `schema.md` (`minutes_versions`), this file.
 
 **Findings not resolved (need a decision; not decided silently).**
 
