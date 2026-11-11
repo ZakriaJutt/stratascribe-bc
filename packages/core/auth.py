@@ -1,8 +1,9 @@
 """Sign-in: emailed single-use link plus authenticator code (B2, T-2.2.2; TRD AD-10, App-flow S-01).
 
-1. ``request_link``: rate limited per IP address and per email; the same answer whether or not the
-   address exists. For an invited or active user a link is stored (HMAC of 32 random bytes, 10 minutes)
-   bound to the requesting browser's nonce cookie, and the email is sent after the response.
+1. ``request_link``: rate limited per IP address and per email; the same answer, and the same work
+   before answering, whether or not the address exists. After the response, ``issue_link`` stores a
+   link for an invited or active user (HMAC of 32 random bytes, 10 minutes) bound to the requesting
+   browser's nonce cookie and sends the email.
 2. ``check_link``: read-only; says whether the browser must enrol an authenticator or enter a code.
    Mail scanners that prefetch the link therefore cannot use it up.
 3. ``enrol``: first sign-in only; returns a new secret once (stored encrypted, not yet active).
@@ -25,13 +26,15 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core import audit, clock, config, ratelimit, sessions, totp
+from core import audit, clock, config, mail, ratelimit, sessions, totp
+from core import logging as clog
 from core.db import Actor, session_for
 from core.errors import Conflict, DomainError, Invalid
 from core.ids import uuid7
 from core.mail import Message
 from core.models import SignInLink, User
 
+log = clog.get_logger("auth")
 NONCE_COOKIE = "ss_signin"
 MAX_FAILED_CODES = 5
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}$")
@@ -85,12 +88,28 @@ def _limit(bucket: str, ident: str, rule: tuple[int, int]) -> None:
                           extra={"retry_after_seconds": retry})
 
 
-def request_link(email_value: object, ip: str, nonce: str, next_value: object = None) -> Message | None:
-    """Store a link for a known, usable address and return the email to send; None otherwise.
-    The caller answers identically in both cases."""
+def request_link(email_value: object, ip: str) -> str:
+    """The synchronous part of a sign-in request: validate the address and apply the rate limits.
+    It does the same work whether or not the address exists; everything that depends on that
+    (lookup, link row, audit, email) runs in ``issue_link`` after the response is sent (B2-S02)."""
     email = normalise_email(email_value)
     _limit("signin-ip", ip, ratelimit.SIGN_IN_PER_IP)
     _limit("signin-email", email, ratelimit.SIGN_IN_PER_EMAIL)
+    return email
+
+
+def issue_link(email: str, nonce: str, next_value: object = None) -> bool:
+    """Run after the response: store a link for a known, usable address and email it. Returns whether
+    an email was sent. Never raises (it runs as a background task); failures are logged by kind."""
+    try:
+        message = _store_link(email, nonce, next_value)
+    except Exception:  # noqa: BLE001
+        log.error("sign-in link not issued", extra={"kind": "sign_in_link", "error_code": "issue_failed"})
+        return False
+    return message is not None and mail.send(message, "sign_in_link")
+
+
+def _store_link(email: str, nonce: str, next_value: object) -> Message | None:
     cfg = config.settings()
     now = clock.now()
     with session_for(Actor.auth()) as s:

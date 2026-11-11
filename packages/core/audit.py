@@ -19,7 +19,7 @@ from core.models import AuditEvent
 
 ALLOWED_DETAIL_KEYS = frozenset(
     {"reason", "role", "basis", "state", "from_state", "to_state", "version", "count", "format", "field",
-     "category", "kind", "route", "error_code", "outcome", "part_number", "days"}
+     "category", "kind", "route", "error_code", "outcome", "part_number", "days", "range_start", "range_end"}
 )
 
 

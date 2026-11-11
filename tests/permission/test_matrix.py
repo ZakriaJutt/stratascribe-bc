@@ -263,7 +263,8 @@ def test_i25_read_events_have_no_content(world: World, as_user: Any) -> None:
     assert {"meeting.opened", "transcript.read", "audio.streamed"} <= actions
     for r in rows:
         assert r.strata_id == world.zzs9001 and r.target_id is not None
-        assert set(r.details) <= {"basis", "count", "part_number", "reason", "outcome", "version"}
+        assert set(r.details) <= {"basis", "count", "part_number", "reason", "outcome", "version",
+                                  "range_start", "range_end"}  # byte offsets, no content (B2-S01)
     # export.downloaded: exports are not built in B1
 
 

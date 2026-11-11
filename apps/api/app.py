@@ -313,8 +313,9 @@ def create_app() -> FastAPI:
         nonce = request.cookies.get(auth.NONCE_COOKIE, "")
         if not (20 <= len(nonce) <= 100):
             nonce = auth.new_nonce()
-        send_later(tasks, auth.request_link(body.get("email"), client_ip(request), nonce, body.get("next")),
-                   "sign_in_link")
+        email = auth.request_link(body.get("email"), client_ip(request))
+        # Lookup, link row, audit and email all run after the response (constant-time answer, B2-S02).
+        tasks.add_task(auth.issue_link, email, nonce, body.get("next"))
         resp = JSONResponse({"status": "check_email",
                              "message": "Check your email. If the address belongs to a member, a sign-in link is "
                                         "on its way."}, status_code=202)
@@ -480,9 +481,10 @@ def create_app() -> FastAPI:
             rng = request.headers.get("range")
             span = parse_range(rng, size)  # 400 / 416 before any byte is read (B1-007)
             start, end = span if span is not None else (0, size - 1)
-            if start == 0:
-                audit.record(s, actor, "audio.streamed", strata_id=a.strata_id, target_type="audio_asset",
-                             target_id=a.id)
+            # Every authorised read of audio bytes is an event, whatever the range (B2-S01): breach
+            # recovery (R-05) lists exposed recordings from these rows. The byte span is recorded.
+            audit.record(s, actor, "audio.streamed", strata_id=a.strata_id, target_type="audio_asset",
+                         target_id=a.id, details={"range_start": start, "range_end": end})
             key = a.storage_key
         headers = {"Accept-Ranges": "bytes", "Content-Length": str(end - start + 1)}
         if span is not None:
