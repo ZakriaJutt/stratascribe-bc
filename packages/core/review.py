@@ -98,6 +98,7 @@ def item_out(i: MinuteItem, citations: list[MinuteItemCitation] | None = None) -
             "eligible_count": i.eligible_count, "required_count": i.required_count, "met": i.quorum_met,
             "rule": i.quorum_rule, "formula": i.quorum_formula,
             "attested_at": i.quorum_attested_at.isoformat() if i.quorum_attested_at else None,
+            "statement_text": quorum_wording(i),
         },
         "row_version": i.row_version,
         "citations": [
@@ -152,7 +153,27 @@ COUNT_FIELDS = ("threshold", "votes_for", "votes_against", "votes_abstained", "e
 QUORUM_INPUTS = ("quorum_basis", "quorum_statement", "present_count", "eligible_count")
 MOTION_ONLY = ("outcome_method", "declared_outcome", *COUNT_FIELDS)
 
-BLOCK_QUORUM_BASIS = "Record how quorum was established: counted from attendance, or declared by the chair."
+BLOCK_QUORUM_BASIS = ("Record how quorum was established: counted from attendance, declared by the chair, "
+                      "or not recorded because attendance is unknown.")
+BLOCK_QUORUM_NOT_RECORDED = "When attendance is unknown the minutes can only record 'quorum not recorded'."
+BLOCK_QUORUM_COUNTED_STATEMENT = "With attendance figures the minutes record quorum established or not established."
+QUORUM_NOT_RECORDED_WORDING = (
+    "Quorum: not recorded. The number of votes present was not available to the manager who prepared "
+    "these minutes."
+)
+
+
+def quorum_wording(i: MinuteItem) -> str | None:
+    """The quorum sentence printed in the minutes, built only from stored fields (lead ruling)."""
+    if i.item_type != "quorum" or i.quorum_statement is None:
+        return None
+    if i.quorum_statement == "not_recorded":
+        return QUORUM_NOT_RECORDED_WORDING
+    if i.quorum_basis == "declared":
+        return "Quorum was declared established by the chair."
+    said = "Quorum was established" if i.quorum_statement == "established" else "Quorum was not established"
+    return (f"{said}: {i.present_count} present of {i.eligible_count} eligible; {i.required_count} required "
+            f"({i.quorum_rule}, {i.rules_version}).")
 BLOCK_QUORUM_NUMBERS = "Enter the votes (or council members) present and the number eligible."
 BLOCK_QUORUM_STATEMENT = "Select what the minutes record: quorum established or not established."
 BLOCK_QUORUM_DECLARED = "A quorum declared by the chair can only record that quorum was established."
@@ -216,6 +237,9 @@ def _evaluate_quorum(item: MinuteItem, ctx: Context) -> Evaluation:
     reason: str | None = None
     if item.quorum_basis is None:
         reason = BLOCK_QUORUM_BASIS
+    elif item.quorum_basis == "not_recorded":
+        if item.quorum_statement != "not_recorded" or item.present_count is not None:
+            reason = BLOCK_QUORUM_NOT_RECORDED
     elif item.quorum_basis == "declared":
         if item.quorum_statement is None:
             reason = BLOCK_QUORUM_STATEMENT
@@ -241,6 +265,8 @@ def _evaluate_quorum(item: MinuteItem, ctx: Context) -> Evaluation:
             cols = res.columns()
             if item.quorum_statement is None:
                 reason = BLOCK_QUORUM_STATEMENT
+            elif item.quorum_statement == "not_recorded":
+                reason = BLOCK_QUORUM_COUNTED_STATEMENT
             elif (item.quorum_statement == "established") != res.met:
                 said = "established" if item.quorum_statement == "established" else "not established"
                 got = "met" if res.met else "not met"
@@ -342,7 +368,7 @@ def update_item(
                 item.outcome_attested_by = actor.user_id if new is not None else None
                 item.outcome_attested_at = now if new is not None else None
             if field in ("quorum_basis", "quorum_statement"):
-                declared = item.quorum_basis == "declared"
+                declared = item.quorum_basis in ("declared", "not_recorded")  # the manager attests either
                 item.quorum_attested_by = actor.user_id if declared else None
                 item.quorum_attested_at = now if declared else None
         if item.outcome_method != "counted":

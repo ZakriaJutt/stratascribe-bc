@@ -486,9 +486,16 @@ REVIEWED_QUORUM_SQL = (
     "item_type <> 'quorum' OR review_status <> 'reviewed' OR (quorum_statement IS NOT NULL AND ("
     "(coalesce(quorum_basis, '') = 'declared' AND quorum_statement = 'established' "
     "AND quorum_attested_by IS NOT NULL AND quorum_attested_at IS NOT NULL) OR "
+    "(coalesce(quorum_basis, '') = 'not_recorded' AND quorum_statement = 'not_recorded' "
+    "AND quorum_attested_by IS NOT NULL AND quorum_attested_at IS NOT NULL) OR "
     "(coalesce(quorum_basis, '') = 'counted' AND present_count IS NOT NULL AND eligible_count IS NOT NULL "
-    "AND quorum_met IS NOT NULL AND rules_version IS NOT NULL AND quorum_formula IS NOT NULL "
+    "AND required_count IS NOT NULL AND quorum_met IS NOT NULL AND rules_version IS NOT NULL "
+    "AND quorum_formula IS NOT NULL AND quorum_statement IN ('established', 'not_established') "
     "AND quorum_met = (quorum_statement = 'established'))))"
+)
+QUORUM_BASIS_SQL = "quorum_basis IS NULL OR quorum_basis IN ('counted', 'declared', 'not_recorded')"
+QUORUM_STATEMENT_SQL = (
+    "quorum_statement IS NULL OR quorum_statement IN ('established', 'not_established', 'not_recorded')"
 )
 
 
@@ -592,13 +599,8 @@ class MinuteItem(Base):
         CheckConstraint(DECLARED_NO_COUNTS_SQL, name="declared_no_counts"),
         CheckConstraint(QUORUM_FIELDS_SQL, name="quorum_fields_only_on_quorum"),
         CheckConstraint(REVIEWED_QUORUM_SQL, name="reviewed_quorum_complete"),
-        CheckConstraint(
-            "quorum_basis IS NULL OR quorum_basis IN ('counted', 'declared')", name="quorum_basis"
-        ),
-        CheckConstraint(
-            "quorum_statement IS NULL OR quorum_statement IN ('established', 'not_established')",
-            name="quorum_statement",
-        ),
+        CheckConstraint(QUORUM_BASIS_SQL, name="quorum_basis"),
+        CheckConstraint(QUORUM_STATEMENT_SQL, name="quorum_statement"),
         CheckConstraint(
             "coalesce(present_count, 0) >= 0 AND coalesce(eligible_count, 0) >= 0 AND coalesce(required_count, 0) >= 0",
             name="quorum_counts_non_negative",

@@ -14,7 +14,17 @@ from core import config, jobs, storage
 from core.db import Actor, session_for
 from core.devdata import World
 from core.models import Approval, AudioAsset, Correction, Job, Meeting, MinuteItem
-from tests.helpers import Api, authorize, drain_worker, fake_wav, new_meeting, processed_meeting, sha, upload
+from tests.helpers import (
+    Api,
+    authorize,
+    drain_worker,
+    fake_wav,
+    new_meeting,
+    processed_meeting,
+    review_quorum,
+    sha,
+    upload,
+)
 
 pytestmark = pytest.mark.db
 ATTEST = {"attestation_text_version": "attest-2026.11.1"}
@@ -41,6 +51,7 @@ def review_all(api: Api, meeting_id: str) -> None:
     for it in motions(api, meeting_id):
         r = patch(api, it, outcome_method="declared", declared_outcome="carried", reviewed=True)
         assert r.status_code == 200, r.text
+    review_quorum(api, meeting_id)
 
 
 def link_confirmed_clause(api: Api, world: World, meeting_id: str) -> None:
@@ -288,7 +299,8 @@ def test_invalid_model_output_twice_gives_empty_template(world: World, as_user: 
     while run_one("w", FakeTranscriber(), InvalidJsonLlm()):
         pass
     d = api.get(f"/meetings/{m['id']}/draft").json()
-    assert d["state"] == "ready_for_review" and d["items"] == []
+    assert d["state"] == "ready_for_review"
+    assert [(i["item_type"], i["body_text"]) for i in d["items"]] == [("quorum", "")]  # template quorum item only
     added = api.post(f"/meetings/{m['id']}/minute-items", {"item_type": "motion", "body_text": "Typed by hand"})
     assert added.status_code == 201
 

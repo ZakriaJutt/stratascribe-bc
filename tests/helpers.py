@@ -111,3 +111,13 @@ def processed_meeting(api: Api, strata_id: Any, **kw: Any) -> dict[str, Any]:
     assert api.post(f"/meetings/{m['id']}/process").status_code == 202
     drain_worker()
     return m
+
+
+def review_quorum(api: Api, meeting_id: str, **fields: Any) -> dict[str, Any]:
+    """Complete the draft's quorum item (default: declared established by the chair, attested)."""
+    d = api.get(f"/meetings/{meeting_id}/draft").json()
+    q = next(i for i in d["items"] if i["item_type"] == "quorum")
+    body = fields or {"quorum_basis": "declared", "quorum_statement": "established"}
+    r = api.patch(f"/minute-items/{q['id']}", {**body, "reviewed": True}, headers={"If-Match": str(q["row_version"])})
+    assert r.status_code == 200, r.text
+    return dict(r.json())

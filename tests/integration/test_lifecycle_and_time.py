@@ -14,7 +14,7 @@ from core import clock, config, retention, storage
 from core.db import Actor, session_for
 from core.devdata import World
 from core.models import AudioAsset
-from tests.helpers import Api, authorize, fake_wav, new_meeting, processed_meeting, sha, upload
+from tests.helpers import Api, authorize, fake_wav, new_meeting, processed_meeting, review_quorum, sha, upload
 
 pytestmark = pytest.mark.db
 
@@ -123,6 +123,7 @@ def _approve(api: Api, world: World, mid: str, doc: dict[str, Any]) -> None:
     for it in [i for i in api.get(f"/meetings/{mid}/draft").json()["items"] if i["item_type"] == "motion"]:
         api.patch(f"/minute-items/{it['id']}", {"outcome_method": "declared", "declared_outcome": "carried",
                                                  "reviewed": True}, headers={"If-Match": str(it["row_version"])})
+    review_quorum(api, mid)
     assert api.post(f"/meetings/{mid}/approve", {"attestation_text_version": "attest-2026.11.1"}).status_code == 200
 
 

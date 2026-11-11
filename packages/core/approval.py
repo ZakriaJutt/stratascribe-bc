@@ -37,7 +37,7 @@ from core.models import (
     MinutesVersion,
     Transcript,
 )
-from core.review import context, evaluate
+from core.review import context, evaluate, quorum_wording
 
 ATTESTATION_TEXT_VERSIONS = ("attest-2026.11.1",)
 NOT_EVIDENCED = "recording authority not evidenced"
@@ -55,7 +55,7 @@ def _canonical(items: list[MinuteItem], cites: dict[uuid.UUID, list[str]]) -> by
             "discrepancy_resolution": i.discrepancy_resolution, "quorum_basis": i.quorum_basis,
             "quorum_statement": i.quorum_statement, "present_count": i.present_count,
             "eligible_count": i.eligible_count, "required_count": i.required_count, "quorum_met": i.quorum_met,
-            "rules_version": i.rules_version,
+            "rules_version": i.rules_version, "quorum_wording": quorum_wording(i),
             "citations": sorted(cites.get(i.id, [])),
         }
         for i in items
@@ -104,6 +104,10 @@ def approve(session: Session, actor: Actor, meeting_id: uuid.UUID, body: dict[st
         select(MinuteItem).where(MinuteItem.minutes_version_id == v.id, MinuteItem.deleted_at.is_(None))
         .order_by(MinuteItem.position).with_for_update()
     ).all())
+    if not any(i.item_type == "quorum" for i in items):
+        # Quorum is the precondition for any business recorded (lead ruling after review round 1).
+        raise Conflict("Add the quorum item: record attendance, the chair's declaration, or that quorum was not "
+                       "recorded.", code="quorum_missing")
     problems: list[dict[str, Any]] = []
     ctx = context(session, items[0]) if items else None
     for i in items:

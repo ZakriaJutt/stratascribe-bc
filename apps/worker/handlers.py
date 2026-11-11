@@ -107,6 +107,12 @@ def draft_minutes(job: LeasedJob, llm: LlmClient) -> uuid.UUID:
                                    template_version="empty-template" if items is None else TEMPLATE_VERSION)
                 s.add(v)
                 s.flush()
+                # Every draft carries a quorum item for the manager to complete (lead ruling): from the model's
+                # text if it proposed one, otherwise empty. Only the manager's confirmed figures decide it.
+                if not any(it.item_type == "quorum" for it in items or []):
+                    s.add(MinuteItem(id=uuid7(), brokerage_id=job.brokerage_id, strata_id=job.strata_id,
+                                     minutes_version_id=v.id, position=0, item_type="quorum", body_text="",
+                                     origin="ai", ai_suggestion={"template": "quorum"}))
                 for pos, it in enumerate(items or [], start=1):
                     suggestion = it.model_dump()
                     if it.item_type == "motion":

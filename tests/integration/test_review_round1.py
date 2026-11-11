@@ -221,10 +221,8 @@ def test_b1_005_declared_motion_stores_no_counts(world: World, as_user: Any) -> 
 
 
 def _quorum_item(api: Api, meeting_id: str) -> dict[str, Any]:
-    r = api.post(f"/meetings/{meeting_id}/minute-items",
-                 {"item_type": "quorum", "body_text": "Quorum was established.", "position": 1})
-    assert r.status_code == 201
-    return dict(r.json())
+    """The quorum item every draft carries (lead ruling)."""
+    return next(i for i in api.get(f"/meetings/{meeting_id}/draft").json()["items"] if i["item_type"] == "quorum")
 
 
 def _review_motions(api: Api, meeting_id: str) -> None:
@@ -239,7 +237,7 @@ def test_b1_006_unreviewed_quorum_statement_blocks_approval(world: World, as_use
     _review_motions(priya, m["id"])
     link_confirmed_clause(priya, world, m["id"])
     r = priya.post(f"/meetings/{m['id']}/approve", ATTEST)
-    assert r.status_code == 409 and r.json()["error"]["items"][0]["position"] == 1
+    assert r.status_code == 409 and r.json()["error"]["items"][0]["position"] == 0
 
 
 def test_b1_006_statement_contradicting_numbers_is_refused(world: World, as_user: Any) -> None:
@@ -353,3 +351,41 @@ def test_b1_009_foreign_denial_takes_actor_from_session(world: World, as_user: A
         s.execute(text("SELECT app_record_foreign_denial('meeting', :m, gen_random_uuid())"), {"m": mo["id"]})
     rows = owner_sql("SELECT brokerage_id, actor_id FROM audit_events WHERE target_id = :m", m=mo["id"])
     assert rows == [(world.tidewater, world.priya)]
+
+
+# ---------------------------------------------------------------- lead ruling: quorum item required
+
+
+def test_approval_refused_without_any_quorum_item(world: World, as_user: Any) -> None:
+    priya = as_user(world.priya)
+    m = processed_meeting(priya, world.zzs9001)
+    q = _quorum_item(priya, m["id"])
+    assert priya.delete(f"/minute-items/{q['id']}", {"reason": "removed for test"}).status_code == 200
+    _review_motions(priya, m["id"])
+    link_confirmed_clause(priya, world, m["id"])
+    r = priya.post(f"/meetings/{m['id']}/approve", ATTEST)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "quorum_missing"
+    # The database refuses it too, even bypassing core.approval.
+    actor = Actor.user(world.priya, world.harbourline, "strata_manager")
+    with pytest.raises(DBAPIError, match="reviewed quorum item"), session_for(actor) as s:
+        s.execute(text("UPDATE minutes_versions SET status = 'approved' WHERE meeting_id = :m"), {"m": m["id"]})
+
+
+def test_quorum_not_recorded_is_explicit_and_printed(world: World, as_user: Any) -> None:
+    priya = as_user(world.priya)
+    m = processed_meeting(priya, world.zzs9001)
+    q = _quorum_item(priya, m["id"])
+    bad = patch(priya, q, quorum_basis="not_recorded", quorum_statement="established", reviewed=True).json()
+    assert bad["review_status"] == "blocked"
+    q = patch(priya, bad, quorum_statement="not_recorded", reviewed=True).json()
+    assert q["review_status"] == "reviewed" and q["quorum"]["attested_at"] is not None
+    from core.review import QUORUM_NOT_RECORDED_WORDING
+
+    assert q["quorum"]["statement_text"] == QUORUM_NOT_RECORDED_WORDING
+    assert QUORUM_NOT_RECORDED_WORDING.startswith("Quorum: not recorded.")
+    _review_motions(priya, m["id"])
+    link_confirmed_clause(priya, world, m["id"])
+    assert priya.post(f"/meetings/{m['id']}/approve", ATTEST).status_code == 200
+    approved = priya.get(f"/meetings/{m['id']}/draft").json()
+    printed = next(i for i in approved["items"] if i["item_type"] == "quorum")["quorum"]["statement_text"]
+    assert approved["status"] == "approved" and printed == QUORUM_NOT_RECORDED_WORDING

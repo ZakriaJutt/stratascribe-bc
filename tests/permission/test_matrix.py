@@ -18,7 +18,7 @@ from core.db import Actor, session_for
 from core.devdata import World
 from core.ids import uuid7
 from core.models import AudioAsset, AuditEvent, Meeting, SupportGrant, TranscriptSegment
-from tests.helpers import Api, authorize, bylaw_text, fake_wav, processed_meeting
+from tests.helpers import Api, authorize, bylaw_text, fake_wav, processed_meeting, review_quorum
 
 pytestmark = pytest.mark.db
 
@@ -230,6 +230,7 @@ def test_p6_managing_broker_acts_in_every_building_of_own_brokerage_only(world: 
         r = marta.patch(f"/minute-items/{it['id']}", {"outcome_method": "declared", "declared_outcome": "carried",
                                                        "reviewed": True}, headers={"If-Match": str(it["row_version"])})
         assert r.status_code == 200
+    review_quorum(marta, m["id"])
     assert marta.post(f"/meetings/{m['id']}/approve", {"attestation_text_version": "attest-2026.11.1"}).status_code \
         == 200
     actions = {e["action"] for e in marta.get("/audit-events").json() if e["actor_id"] == str(world.marta)}
