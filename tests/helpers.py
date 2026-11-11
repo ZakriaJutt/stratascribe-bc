@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures"
-CSRF = {"X-StrataScribe-Request": "1"}
+CSRF = {"X-StrataScribe-Request": "1", "Origin": "http://localhost:3106"}
 
 
 class Api:

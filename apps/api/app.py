@@ -9,15 +9,18 @@ under the session; responses carry ``Cache-Control: no-store``.
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from datetime import date
 from typing import Any
 
-from fastapi import Depends, FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ai.llm import FakeLlmClient, LlmClient
@@ -40,7 +43,7 @@ from core import (
 )
 from core import logging as clog
 from core.db import Actor, session_for
-from core.errors import DomainError, Invalid, NotFound, Unauthenticated
+from core.errors import Conflict, DomainError, Invalid, NotFound, Unauthenticated
 from core.ids import uuid7
 from core.models import AudioAsset, AuditEvent, BaselineMeasurement, Transcript, TranscriptSegment, User
 
@@ -58,9 +61,9 @@ def set_llm(client: LlmClient) -> None:
     llm_client = client
 
 
-def _error(exc: DomainError) -> JSONResponse:
+def _error(exc: DomainError, status: int | None = None) -> JSONResponse:
     body = {"error": {"code": exc.code, "message": exc.message, "correlation_id": clog.correlation_id(), **exc.extra}}
-    return JSONResponse(body, status_code=exc.status)
+    return JSONResponse(body, status_code=status or exc.status)
 
 
 # ---------------------------------------------------------------- dependencies
@@ -86,9 +89,16 @@ def guard_request(request: Request) -> None:
         return
     if request.headers.get(CSRF_HEADER) != "1":
         raise DomainError("Missing request header.", code="forbidden_request") from None
+    # Origin (or, failing that, Referer) is required and must be our own origin (B1-010).
+    base = config.settings().public_base_url
     origin = request.headers.get("origin")
-    if origin is not None and origin.rstrip("/") != config.settings().public_base_url:
-        raise DomainError("Cross-origin request refused.", code="forbidden_request")
+    if origin is not None:
+        if origin.rstrip("/") != base:
+            raise DomainError("Cross-origin request refused.", code="forbidden_request")
+        return
+    referer = request.headers.get("referer", "")
+    if not (referer == base or referer.startswith(base + "/")):
+        raise DomainError("Request origin missing or not allowed.", code="forbidden_request")
 
 
 async def json_body(request: Request) -> dict[str, Any]:
@@ -112,18 +122,62 @@ def mutate(actor: Actor, request: Request, body: Any, fn: Callable[[Session], tu
     route = request.scope.get("route")
     route_name = getattr(route, "path", request.url.path) + ":" + request.url.path
     key = request.headers.get("idempotency-key")
-    with session_for(actor) as s:
-        cached = idempotency.lookup(s, actor, route_name, key, body)
-        if cached is not None:
-            return JSONResponse(cached[1], status_code=cached[0])
-        status, out = fn(s)
-        idempotency.store(s, actor, route_name, key, body, status, out)
+    try:
+        with session_for(actor) as s:
+            cached = idempotency.lookup(s, actor, route_name, key, body)
+            if cached is not None:
+                return JSONResponse(cached[1], status_code=cached[0])
+            status, out = fn(s)
+            idempotency.store(s, actor, route_name, key, body, status, out)
+    except IntegrityError as exc:
+        # A concurrent request won a uniqueness race; nothing of this one was committed (B1-011).
+        raise Conflict("A conflicting change was saved at the same moment. Retry the request.",
+                       code="concurrent_change") from exc
     return JSONResponse(out, status_code=status)
 
 
 def read[T](actor: Actor, fn: Callable[[Session], T]) -> T:
     with session_for(actor) as s:
         return fn(s)
+
+
+class BadRange(DomainError):
+    status = 416
+    code = "range_not_satisfiable"
+
+
+def parse_range(header: str | None, size: int) -> tuple[int, int] | None:
+    """Parse one ``bytes=`` range (RFC 9110). None means the whole file."""
+    if header is None:
+        return None
+    m = re.fullmatch(r"bytes=(\d*)-(\d*)", header.strip())
+    if m is None or (not m.group(1) and not m.group(2)):
+        raise DomainError("Malformed Range header.", code="bad_range")
+    lo, hi = m.group(1), m.group(2)
+    if not lo:  # suffix range: the last N bytes
+        n = int(hi)
+        if n == 0:
+            raise BadRange("Range not satisfiable.", extra={"size": size})
+        return max(0, size - n), size - 1
+    start = int(lo)
+    end = min(int(hi), size - 1) if hi else size - 1
+    if start >= size or (hi and int(hi) < start):
+        raise BadRange("Range not satisfiable.", extra={"size": size})
+    return start, end
+
+
+CHUNK = 1024 * 1024
+
+
+def read_chunks(key: str, start: int, end: int) -> Iterator[bytes]:
+    pos = start
+    st = storage.store()
+    while pos <= end:
+        part = st.read(key, pos, min(pos + CHUNK, end + 1) - 1)
+        if not part:
+            return
+        yield part
+        pos += len(part)
 
 
 def uid(value: str) -> uuid.UUID:
@@ -170,6 +224,18 @@ def create_app() -> FastAPI:
         if exc.code == "forbidden_request":
             exc.status = 403
         return _error(exc)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        fields = [".".join(str(p) for p in e.get("loc", ())) for e in exc.errors()]
+        return _error(Invalid("Invalid request parameters.", code="invalid_request", extra={"fields": fields}))
+
+    @app.exception_handler(Exception)
+    async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        # No exception text in the response or the log: it can carry content (B1-011).
+        log.error("unhandled error", extra={"route": request.url.path, "error_code": type(exc).__name__})
+        return _error(DomainError("Something went wrong. Quote the reference to support.", code="internal_error"),
+                      status=500)
 
     def actor_dep(request: Request) -> Actor:
         guard_request(request)
@@ -310,21 +376,18 @@ def create_app() -> FastAPI:
             if a is None or a.upload_state != "complete" or a.deleted_at is not None:
                 raise NotFound("Not found.")
             size = a.byte_size
-            start, end = 0, size - 1
             rng = request.headers.get("range")
-            if rng and rng.startswith("bytes="):
-                lo, _, hi = rng[6:].partition("-")
-                start = int(lo) if lo else 0
-                end = min(int(hi), size - 1) if hi else size - 1
+            span = parse_range(rng, size)  # 400 / 416 before any byte is read (B1-007)
+            start, end = span if span is not None else (0, size - 1)
             if start == 0:
                 audit.record(s, actor, "audio.streamed", strata_id=a.strata_id, target_type="audio_asset",
                              target_id=a.id)
-            data = storage.store().read(a.storage_key, start, end)
-        headers = {"Accept-Ranges": "bytes", "Content-Length": str(len(data))}
-        if rng:
+            key = a.storage_key
+        headers = {"Accept-Ranges": "bytes", "Content-Length": str(end - start + 1)}
+        if span is not None:
             headers["Content-Range"] = f"bytes {start}-{end}/{size}"
-        return Response(data, status_code=206 if rng else 200, media_type="application/octet-stream",
-                        headers=headers)
+        return StreamingResponse(read_chunks(key, start, end), status_code=206 if span is not None else 200,
+                                 media_type="application/octet-stream", headers=headers)
 
     @app.post(v1 + "/meetings/{meeting_id}/process")
     def process(meeting_id: str, request: Request, actor: Actor = A, body: Body = B) -> JSONResponse:
@@ -338,7 +401,8 @@ def create_app() -> FastAPI:
         return read(actor, lambda s: meetings.status_out(s, actor, uid(meeting_id)))
 
     @app.get(v1 + "/meetings/{meeting_id}/transcript")
-    def transcript(meeting_id: str, offset: int = 0, limit: int = 200, actor: Actor = A) -> dict[str, Any]:
+    def transcript(meeting_id: str, offset: int = Query(0, ge=0), limit: int = Query(200, ge=1, le=500),
+                   actor: Actor = A) -> dict[str, Any]:
         def fn(s: Session) -> dict[str, Any]:
             m = meetings.get_meeting(s, actor, uid(meeting_id))
             t = s.scalar(select(Transcript).where(Transcript.meeting_id == m.id))
