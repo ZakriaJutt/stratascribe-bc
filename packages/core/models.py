@@ -358,7 +358,11 @@ class Job(Base):
     __table_args__ = (
         building_fk(),
         meeting_fk(),
-        UniqueConstraint("kind", "idempotency_key"),
+        # Scoped to tenant, building and meeting (B1-002); NULLs equal so system jobs stay unique.
+        UniqueConstraint(
+            "brokerage_id", "strata_id", "meeting_id", "kind", "idempotency_key",
+            name="uq_jobs_scope_key", postgresql_nulls_not_distinct=True,
+        ),
         enum_check("kind", JOB_KINDS),
         enum_check("status", ("queued", "leased", "succeeded", "failed")),
         CheckConstraint(
@@ -452,6 +456,42 @@ FINAL_OUTCOME_SQL = (
 )
 
 
+# Every term NULL-safe (coalesce / IS NOT NULL): a CHECK passes on NULL, so no clause may yield NULL (B1-003).
+_COUNTED = f"coalesce(({COUNTED_OUTCOME_SQL}), '')"
+REVIEWED_MOTION_SQL = (
+    "item_type <> 'motion' OR review_status <> 'reviewed' OR ("
+    "final_outcome IS NOT NULL AND ("
+    "(coalesce(outcome_method, '') = 'declared' AND declared_outcome IS NOT NULL "
+    "AND outcome_attested_by IS NOT NULL AND outcome_attested_at IS NOT NULL) OR "
+    "(coalesce(outcome_method, '') = 'counted' AND threshold IS NOT NULL AND votes_for IS NOT NULL "
+    "AND votes_against IS NOT NULL AND (coalesce(computed_result, '') IN ('carried', 'defeated') "
+    "OR (coalesce(computed_result, '') = 'tie' AND casting_vote IS NOT NULL)) "
+    f"AND (declared_outcome IS NULL OR declared_outcome = {_COUNTED} "
+    "OR coalesce(discrepancy_resolution, '') = 'recorded_as_declared'))))"
+)
+# A show-of-cards motion stores no counts or threshold; counts exist only for a counted vote (B1-005).
+DECLARED_NO_COUNTS_SQL = (
+    "coalesce(outcome_method, '') = 'counted' OR (threshold IS NULL AND votes_for IS NULL "
+    "AND votes_against IS NULL AND votes_abstained IS NULL AND eligible_votes IS NULL "
+    "AND members_present IS NULL AND casting_vote IS NULL AND discrepancy_resolution IS NULL)"
+)
+QUORUM_FIELDS_SQL = (
+    "item_type = 'quorum' OR (quorum_basis IS NULL AND quorum_statement IS NULL AND present_count IS NULL "
+    "AND eligible_count IS NULL AND required_count IS NULL AND quorum_met IS NULL AND quorum_rule IS NULL "
+    "AND quorum_formula IS NULL AND quorum_attested_by IS NULL)"
+)
+# A reviewed quorum item is either attested as declared by the chair, or counted with the computed
+# result stored and agreeing with the recorded statement (B1-006).
+REVIEWED_QUORUM_SQL = (
+    "item_type <> 'quorum' OR review_status <> 'reviewed' OR (quorum_statement IS NOT NULL AND ("
+    "(coalesce(quorum_basis, '') = 'declared' AND quorum_statement = 'established' "
+    "AND quorum_attested_by IS NOT NULL AND quorum_attested_at IS NOT NULL) OR "
+    "(coalesce(quorum_basis, '') = 'counted' AND present_count IS NOT NULL AND eligible_count IS NOT NULL "
+    "AND quorum_met IS NOT NULL AND rules_version IS NOT NULL AND quorum_formula IS NOT NULL "
+    "AND quorum_met = (quorum_statement = 'established'))))"
+)
+
+
 class MinuteItem(Base):
     __tablename__ = "minute_items"
     id: Mapped[uuid.UUID] = pk()
@@ -479,6 +519,17 @@ class MinuteItem(Base):
     rules_version: Mapped[str | None] = mapped_column(Text)
     discrepancy_resolution: Mapped[str | None] = mapped_column(Text)
     discrepancy_note: Mapped[str | None] = mapped_column(Text)
+    # Quorum attendance (item_type = 'quorum' only; B1-006)
+    quorum_basis: Mapped[str | None] = mapped_column(Text)
+    quorum_statement: Mapped[str | None] = mapped_column(Text)
+    present_count: Mapped[int | None] = mapped_column(Integer)
+    eligible_count: Mapped[int | None] = mapped_column(Integer)
+    required_count: Mapped[int | None] = mapped_column(Integer)
+    quorum_met: Mapped[bool | None] = mapped_column(Boolean)
+    quorum_rule: Mapped[str | None] = mapped_column(Text)
+    quorum_formula: Mapped[str | None] = mapped_column(Text)
+    quorum_attested_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    quorum_attested_at: Mapped[datetime | None] = mapped_column(TS)
     final_outcome: Mapped[str | None] = mapped_column(Text, Computed(FINAL_OUTCOME_SQL, persisted=True))
     spoken_outcome: Mapped[str | None] = mapped_column(Text)
     ai_suggestion: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
@@ -517,7 +568,7 @@ class MinuteItem(Base):
         ),
         CheckConstraint(
             "casting_vote IS NULL OR (casting_vote IN ('not_used', 'used_for', 'used_against') "
-            "AND computed_result = 'tie')",
+            "AND coalesce(computed_result, '') = 'tie')",
             name="casting_vote",
         ),
         CheckConstraint(
@@ -525,7 +576,7 @@ class MinuteItem(Base):
             name="computed",
         ),
         CheckConstraint(
-            "outcome_method = 'counted' OR computed_result IS NULL", name="declared_has_no_computed"
+            "coalesce(outcome_method, '') = 'counted' OR computed_result IS NULL", name="declared_has_no_computed"
         ),
         CheckConstraint(
             "discrepancy_resolution IS NULL OR discrepancy_resolution IN "
@@ -537,17 +588,20 @@ class MinuteItem(Base):
             "OR (discrepancy_note IS NOT NULL AND length(btrim(discrepancy_note)) > 0)",
             name="resolution_note",
         ),
+        CheckConstraint(REVIEWED_MOTION_SQL, name="reviewed_motion_complete"),
+        CheckConstraint(DECLARED_NO_COUNTS_SQL, name="declared_no_counts"),
+        CheckConstraint(QUORUM_FIELDS_SQL, name="quorum_fields_only_on_quorum"),
+        CheckConstraint(REVIEWED_QUORUM_SQL, name="reviewed_quorum_complete"),
         CheckConstraint(
-            "item_type <> 'motion' OR review_status <> 'reviewed' OR ("
-            "final_outcome IS NOT NULL AND ("
-            "(outcome_method = 'declared' AND declared_outcome IS NOT NULL AND outcome_attested_by IS NOT NULL "
-            "AND outcome_attested_at IS NOT NULL) OR "
-            "(outcome_method = 'counted' AND threshold IS NOT NULL AND votes_for IS NOT NULL "
-            "AND votes_against IS NOT NULL AND (computed_result IN ('carried', 'defeated') "
-            "OR (computed_result = 'tie' AND casting_vote IS NOT NULL)) "
-            f"AND (declared_outcome IS NULL OR declared_outcome = ({COUNTED_OUTCOME_SQL}) "
-            "OR discrepancy_resolution = 'recorded_as_declared'))))",
-            name="reviewed_motion_complete",
+            "quorum_basis IS NULL OR quorum_basis IN ('counted', 'declared')", name="quorum_basis"
+        ),
+        CheckConstraint(
+            "quorum_statement IS NULL OR quorum_statement IN ('established', 'not_established')",
+            name="quorum_statement",
+        ),
+        CheckConstraint(
+            "coalesce(present_count, 0) >= 0 AND coalesce(eligible_count, 0) >= 0 AND coalesce(required_count, 0) >= 0",
+            name="quorum_counts_non_negative",
         ),
         enum_check("origin", ("ai", "manager_added")),
         enum_check("review_status", ("needs_review", "reviewed", "blocked")),
@@ -874,14 +928,24 @@ class SupportGrant(Base):
 
 
 class IdempotencyKey(Base):
+    """Stored first responses. Scoped by brokerage, building and user; visible only while the
+    user may still see that building, and only until ``expires_at`` (B1-001)."""
+
     __tablename__ = "idempotency_keys"
     key: Mapped[str] = mapped_column(Text, primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     route: Mapped[str] = mapped_column(Text, primary_key=True)
+    brokerage_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("brokerages.id"), nullable=False)
+    strata_id: Mapped[uuid.UUID | None] = uid(True)
     request_hash: Mapped[str] = mapped_column(Text, nullable=False)
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
     response_body: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = created()
+    expires_at: Mapped[datetime] = mapped_column(TS, nullable=False)
+    __table_args__ = (
+        building_fk(),
+        Index("ix_idempotency_expires", "expires_at"),
+    )
 
 
 class WorkerHeartbeat(Base):
