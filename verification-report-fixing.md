@@ -309,6 +309,29 @@ Reviewer notes, unchanged: "Round-1 '36 cases' was a reviewer counting error; th
 
 **B1-012: fixed after retest, not yet re-reviewed.** Migration 0006: BEFORE INSERT trigger (a version is born a draft with no content hash); `REVOKE INSERT, UPDATE` on `minutes_versions` from `stratascribe_app`, then INSERT granted on every column except `status`; `app_approve_version` (SECURITY DEFINER, checks brokerage and building) is the only path to `approved`/`superseded`; deferred constraint triggers on INSERT and UPDATE of `minutes_versions` (approved needs an approval row, a content hash and a reviewed quorum item) and on INSERT of `approvals` (needs its version approved with a reviewed quorum item). `core.approval` calls the function and no longer row-locks the version (the meeting row lock serialises approvals). Tests in `tests/integration/test_review_round2.py`: `test_b1_012_direct_insert_as_approved_is_refused`, `test_b1_012_insert_draft_then_update_to_approved_is_refused`, `test_b1_012_approval_row_without_quorum_is_refused`, `test_b1_012_normal_approval_and_reopen_still_work`; all pass. Reviewer's round-2 script, run unchanged after the fix: 35 collected, 35 passed. Head is now `0006`. Documents: `schema.md` (`minutes_versions`), this file.
 
+### Review round 3 (final retest, 2026-11-11)
+
+Reviewer's round-3 verdicts, copied unchanged from `_coordination/review/stratascribe-bc-b1-verdicts.json` (round 3, commit `a6e46f3`; reproduced: make_test "119 passed", lint "pass", typecheck "pass (54 files)", migration_head "0006", reviewer_adversarial "41 collected, 41 passed"; new_findings: none):
+
+| ID | Verdict |
+|---|---|
+| B1-001 | Closed |
+| B1-002 | Closed |
+| B1-003 | Closed |
+| B1-004 | Closed |
+| B1-005 | Closed |
+| B1-006 | Closed |
+| B1-007 | Closed |
+| B1-008 | Closed |
+| B1-009 | Closed |
+| B1-010 | Closed |
+| B1-011 | Closed |
+| B1-012 | Closed |
+
+Reviewer residuals, unchanged: "Raw SQL as the app role in a manager's own building can approve a version with unreviewed motions, a version hash different from the approval row's hash, and no meeting transition; these three rules are enforced only in core.approval. Not reachable through the API; schema.md does not claim a database guard for them." "app_version_status(uuid) returns the status word of any version to a session that knows its id (no content; present since migration 0003)."
+
+**Residual R6 (raw-SQL approval in the manager's own building): fixed after round-3 retest, lead-checked.** Migration 0007: `app_version_items_ready(version)` (SECURITY DEFINER) is true only when every live motion and quorum item is `reviewed` (so none `blocked`), every motion has a final outcome, and no counted motion has a declared outcome that differs from its final outcome (an unresolved discrepancy). `app_approve_version` refuses immediately when the quorum item is unreviewed or the items are not ready. The deferred trigger on `minutes_versions` refuses the approved transition at commit when the items are not ready or the meeting is not `approved`; the deferred trigger on `approvals` refuses a row whose content hash differs from its version's hash. The new helpers `app_version_hash` and `app_meeting_state_of_version` answer only inside the caller's brokerage. Not changed: `app_version_status(uuid)` (second residual, status word only). Tests in `tests/integration/test_review_round3.py`, all calling the database path directly as `stratascribe_app`: `test_r6_unreviewed_motions_refused_by_function`, `test_r6_blocked_motion_with_unresolved_discrepancy_refused`, `test_r6_approval_row_hash_must_equal_version_hash`, `test_r6_meeting_must_be_approved_at_commit`, `test_r6_helpers_reveal_nothing_across_brokerages`; all pass. Commands: `make test` 124 passed, 0 failed (clean schema, migrations 0001-0007); `make lint` all checks passed; `make typecheck` success, 55 files; `make check-migrations` `0007 (head)`, one head. Documents: `schema.md` (`minutes_versions`), this file.
+
 **Findings not resolved (need a decision; not decided silently).**
 
 - ~~Quorum has nowhere to be stored.~~ Resolved in review round 1 (B1-006). ~~Whether approval requires a quorum item~~ decided by the lead on 2026-11-11: yes, always (see "Lead ruling" above).

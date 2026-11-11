@@ -60,7 +60,7 @@ def test_i21_config_fingerprint_matches_and_mismatch_is_not_ready(world: World, 
 def test_g1_single_migration_head() -> None:
     cfg = Config(str(ROOT / "tools" / "alembic.ini"))
     heads = ScriptDirectory.from_config(cfg).get_heads()
-    assert heads == ["0006"]
+    assert heads == ["0007"]
 
 
 def test_g2_migrated_schema_matches_orm_metadata(world: World) -> None:
