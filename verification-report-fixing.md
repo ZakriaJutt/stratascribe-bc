@@ -165,10 +165,10 @@ Issues the author found and fixed while cross-checking the ten files before the 
 
 | Command | What it does | Result |
 |---|---|---|
-| `make test` | Drops and re-creates the `stratascribe_test` schema, runs migrations 0001-0004 from zero, then `pytest` over `tests/` | **113 passed, 0 failed** (11.0 s), after review round 1 (was 92 before the fixes) |
+| `make test` | Drops and re-creates the `stratascribe_test` schema, runs migrations 0001-0005 from zero, then `pytest` over `tests/` | **115 passed, 0 failed** (11.8 s), after review round 1 and the lead's quorum ruling (92 before the fixes) |
 | `make lint` | ruff (pyflakes, pycodestyle, isort, bugbear, bandit subset) over `packages`, `apps`, `tests` | All checks passed |
-| `make typecheck` | mypy `--strict` over `packages`, `apps` | No issues in 52 source files |
-| `make check-migrations` | Exactly one Alembic head | Pass (head `0004`) |
+| `make typecheck` | mypy `--strict` over `packages`, `apps` | No issues in 53 source files |
+| `make check-migrations` | Exactly one Alembic head | Pass (head `0005`) |
 | `make seed` then `make dev` | Seeds the dev database; starts worker and API directly; polls `/readyz` | `/readyz` ready: database, configuration (API and worker fingerprints equal), Redis, storage all `ok` |
 
 The TRD names no linter or type checker; ruff and mypy were chosen for B1.
@@ -277,13 +277,17 @@ Independent review `_coordination/review/stratascribe-bc-b1-round1.md`: 0 blocke
 | B1-010 | Mutating requests require `Origin` or `Referer` equal to `PUBLIC_BASE_URL` | `test_b1_010_mutation_without_origin_or_referer_is_refused` | Pass |
 | B1-011 | JSON error envelope with correlation ID for unexpected errors (no exception text) and for invalid parameters; idempotency key and uniqueness races return 409, never 500 | `test_b1_011_unexpected_error_is_json_without_detail`, `test_b1_011_concurrent_same_key_creates_one_meeting` | Pass |
 
-**Reviewer's adversarial script** (`_coordination/review/stratascribe-bc-b1-adversarial.py`, run unchanged with `-p tests.conftest`). The script collects 31 cases here. Before the fixes: 23 passed, 8 failed (A3, A4, A5, C2, D5, E2, F1, H1). After the fixes: the 8 pass; 29 passed, 2 failed. The 2 failures are G2 and G3, which assert the holes B1-008 and B1-009 exist ("observe" cases): G2 now raises the system-column trigger and G3 calls the removed 4-argument function. They fail because those holes are closed.
+**Reviewer's adversarial script** (`_coordination/review/stratascribe-bc-b1-adversarial.py`, run unchanged with `-p tests.conftest`). The script collects 31 cases here. Before the fixes: 23 passed, 8 failed (A3, A4, A5, C2, D5, E2, F1, H1). After the fixes: the 8 pass; 29 passed, 2 failed. The 2 failures are G2 and G3. They were "observe" cases that passed only while the holes existed; **they now fail because the holes are closed**: G2 (system context rewrites `audio_assets.storage_key`) is refused by the B1-008 trigger, and G3 (forged actor in `app_record_foreign_denial`) fails because the 4-argument form that accepted an actor no longer exists (B1-009). Their replacements in this repository, `test_b1_008_…` and `test_b1_009_…`, assert the closed behaviour and pass.
 
 **Documents changed in round 1:** `schema.md` (`jobs` key scope, `minute_items` NULL-safe and show-of-cards CHECKs and quorum columns, citation quote rule, `idempotency_keys` scope/expiry/RLS, system-context trigger, B1 notes), `TRD.md` (Jobs idempotency row, quorum storage and approval refusal, validator rule, B1 build notes), `PRD.md` (MH-06 quorum acceptance, MH-10 meaningful quote), `App-flow.md` (S-10 quorum card), this file. The rules change (required number) bumped the rules version to `rules-2026.11.2`; U-1 to U-6 and U-10 to U-15 still pass.
 
+### Lead ruling: a reviewed quorum item is required (2026-11-11)
+
+The lead ruled that minutes cannot be approved without a reviewed, consistent quorum item. Implemented: the worker adds an empty quorum item to every draft; `core.approval` refuses with `quorum_missing` when none exists and with `items_not_ready` while one is unreviewed or contradictory; migration 0005 adds a deferred constraint trigger refusing `draft → approved` on `minutes_versions` without a reviewed quorum item, and the explicit basis and statement `not_recorded` (attested), whose fixed wording "Quorum: not recorded. The number of votes present was not available to the manager who prepared these minutes." is returned as the item's `statement_text` and included in the approval content hash. Word/PDF export is not built, so "printed" means the stored minutes output and hash, not a file. Tests: `test_approval_refused_without_any_quorum_item` (API 409 and the database trigger), `test_quorum_not_recorded_is_explicit_and_printed`; both pass. Documents: PRD MH-06 and MH-08 (the approval rule lives in MH-08; MH-10 concerns bylaw answers and has no quorum content, so it was not changed), App-flow S-10, TRD quorum rules, schema.md `minute_items`.
+
 **Findings not resolved (need a decision; not decided silently).**
 
-- ~~Quorum has nowhere to be stored.~~ Resolved in review round 1 (B1-006, below). Still open as a product decision: whether approval should **require** a quorum item in every set of minutes. B1 refuses an unreviewed or contradictory quorum item but does not require one; proposal `[D]`: require one for general meetings once S-10 exists.
+- ~~Quorum has nowhere to be stored.~~ Resolved in review round 1 (B1-006). ~~Whether approval requires a quorum item~~ decided by the lead on 2026-11-11: yes, always (see "Lead ruling" above).
 - **Duplicate R-03 row** in the risk register below (pre-existing, two identical rows). Left for the reviewer; not changed.
 - The TRD sentence "the model's reading … only pre-selects a method" and CLAUDE.md "never let a model's reading become the outcome" can be read differently; B1 implements the stricter reading.
 
