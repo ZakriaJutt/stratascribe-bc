@@ -11,24 +11,28 @@ kept in ``spoken_outcome`` / ``ai_suggestion`` as a suggestion.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 import rules
+from ai.answer import MIN_QUOTE_WORDS, quote_ok
 from core import audit, authz, clock, jobs
 from core.db import Actor
 from core.errors import Conflict, Invalid, NotFound
 from core.ids import uuid7
-from core.meetings import get_meeting, strata_lot_count
+from core.meetings import get_meeting
 from core.models import (
     BylawClause,
     BylawDocument,
     Correction,
+    Meeting,
     MinuteItem,
     MinuteItemCitation,
     MinutesVersion,
+    StrataCorporation,
 )
 
 FIELD_CATEGORY = {
@@ -49,8 +53,13 @@ FIELD_CATEGORY = {
     "item_type": "other",
     "sensitive_flag": "other",
     "position": "other",
+    "quorum_basis": "attendance",
+    "quorum_statement": "attendance",
+    "present_count": "attendance",
+    "eligible_count": "attendance",
 }
-INT_FIELDS = {"votes_for", "votes_against", "votes_abstained", "eligible_votes", "members_present", "position"}
+INT_FIELDS = {"votes_for", "votes_against", "votes_abstained", "eligible_votes", "members_present", "position",
+              "present_count", "eligible_count"}
 REVIEW_STATES = ("ready_for_review", "in_review")
 
 
@@ -84,6 +93,12 @@ def item_out(i: MinuteItem, citations: list[MinuteItemCitation] | None = None) -
         "review_status": i.review_status,
         "blocked_reason": i.blocked_reason,
         "sensitive_flag": i.sensitive_flag,
+        "quorum": None if i.item_type != "quorum" else {
+            "basis": i.quorum_basis, "statement": i.quorum_statement, "present_count": i.present_count,
+            "eligible_count": i.eligible_count, "required_count": i.required_count, "met": i.quorum_met,
+            "rule": i.quorum_rule, "formula": i.quorum_formula,
+            "attested_at": i.quorum_attested_at.isoformat() if i.quorum_attested_at else None,
+        },
         "row_version": i.row_version,
         "citations": [
             {
@@ -132,6 +147,47 @@ def draft_out(session: Session, actor: Actor, meeting_id: uuid.UUID) -> dict[str
     }
 
 
+COUNT_FIELDS = ("threshold", "votes_for", "votes_against", "votes_abstained", "eligible_votes", "members_present",
+                "casting_vote", "discrepancy_resolution", "discrepancy_note")
+QUORUM_INPUTS = ("quorum_basis", "quorum_statement", "present_count", "eligible_count")
+MOTION_ONLY = ("outcome_method", "declared_outcome", *COUNT_FIELDS)
+
+BLOCK_QUORUM_BASIS = "Record how quorum was established: counted from attendance, or declared by the chair."
+BLOCK_QUORUM_NUMBERS = "Enter the votes (or council members) present and the number eligible."
+BLOCK_QUORUM_STATEMENT = "Select what the minutes record: quorum established or not established."
+BLOCK_QUORUM_DECLARED = "A quorum declared by the chair can only record that quorum was established."
+BLOCK_QUORUM_LOTS = "Enter the building's strata lot and owner counts; they select the quorum rule."
+
+
+@dataclass(frozen=True)
+class Evaluation:
+    blocked_reason: str | None
+
+    @property
+    def blocked(self) -> bool:
+        return self.blocked_reason is not None
+
+
+@dataclass(frozen=True)
+class Context:
+    meeting_type: str
+    reconvened: bool
+    lots: int | None
+    owners: int | None
+    general_rule: dict[str, Any] | None
+    council_rule: dict[str, Any] | None
+
+
+def context(session: Session, item: MinuteItem) -> Context:
+    v = session.get(MinutesVersion, item.minutes_version_id)
+    m = session.get(Meeting, v.meeting_id) if v else None
+    b = session.get(StrataCorporation, item.strata_id)
+    if m is None or b is None:  # pragma: no cover - FKs guarantee both
+        raise NotFound("Not found.")
+    return Context(m.meeting_type, m.reconvened_after_adjournment, b.strata_lot_count, b.owner_count,
+                   b.general_quorum_rule, b.council_quorum_rule)
+
+
 def _motion_input(i: MinuteItem, lots: int | None) -> rules.MotionInput:
     return rules.MotionInput(
         outcome_method=i.outcome_method,
@@ -150,17 +206,64 @@ def _motion_input(i: MinuteItem, lots: int | None) -> rules.MotionInput:
     )
 
 
-def evaluate(session: Session, item: MinuteItem, lots: int | None) -> rules.MotionEvaluation | None:
-    """Re-run the rules for a motion and store the rules package's columns as given."""
-    if item.item_type != "motion":
+_QUORUM_COMPUTED = {"required_count": None, "quorum_met": None, "quorum_rule": None, "quorum_formula": None,
+                    "rules_version": None}
+
+
+def _evaluate_quorum(item: MinuteItem, ctx: Context) -> Evaluation:
+    """Quorum from the numbers the manager confirmed (B1-006), computed by packages/rules."""
+    cols: dict[str, object] = dict(_QUORUM_COMPUTED)
+    reason: str | None = None
+    if item.quorum_basis is None:
+        reason = BLOCK_QUORUM_BASIS
+    elif item.quorum_basis == "declared":
+        if item.quorum_statement is None:
+            reason = BLOCK_QUORUM_STATEMENT
+        elif item.quorum_statement != "established":
+            reason = BLOCK_QUORUM_DECLARED
+    elif item.present_count is None or item.eligible_count is None:
+        reason = BLOCK_QUORUM_NUMBERS
+    else:
+        try:
+            if ctx.meeting_type == "council":
+                res = rules.council_quorum(members_present=item.present_count, council_size=item.eligible_count,
+                                           override=ctx.council_rule)
+            elif ctx.lots is None or ctx.owners is None:
+                res = None
+                reason = BLOCK_QUORUM_LOTS
+            else:
+                res = rules.general_quorum(present_votes=item.present_count, eligible_votes=item.eligible_count,
+                                           strata_lot_count=ctx.lots, owner_count=ctx.owners,
+                                           reconvened_after_adjournment=ctx.reconvened, override=ctx.general_rule)
+        except rules.RuleInputError as exc:
+            raise Invalid(str(exc), code="rule_input") from exc
+        if res is not None:
+            cols = res.columns()
+            if item.quorum_statement is None:
+                reason = BLOCK_QUORUM_STATEMENT
+            elif (item.quorum_statement == "established") != res.met:
+                said = "established" if item.quorum_statement == "established" else "not established"
+                got = "met" if res.met else "not met"
+                reason = f"The minutes record quorum {said}, but the numbers give quorum {got} ({res.formula})."
+    for column, value in cols.items():
+        setattr(item, column, value)
+    return Evaluation(reason)
+
+
+def evaluate(session: Session, item: MinuteItem, ctx: Context | None = None) -> Evaluation | None:
+    """Re-run the rules for a motion or quorum item and store the rules package's columns as given."""
+    if item.item_type not in ("motion", "quorum"):
         return None
+    ctx = ctx or context(session, item)
+    if item.item_type == "quorum":
+        return _evaluate_quorum(item, ctx)
     try:
-        ev = rules.evaluate_motion(_motion_input(item, lots))
+        ev = rules.evaluate_motion(_motion_input(item, ctx.lots))
     except rules.RuleInputError as exc:
         raise Invalid(str(exc), code="rule_input") from exc
     for column, value in ev.columns.items():
         setattr(item, column, value)
-    return ev
+    return Evaluation(ev.blocked_reason)
 
 
 def _load_item(session: Session, actor: Actor, item_id: uuid.UUID) -> tuple[MinuteItem, MinutesVersion]:
@@ -178,9 +281,9 @@ def _start_review(session: Session, meeting_id: uuid.UUID) -> None:
     jobs.advance(session, meeting_id, ("ready_for_review",), "in_review")
 
 
-def _set_status(item: MinuteItem, ev: rules.MotionEvaluation | None, mark_reviewed: bool | None) -> None:
-    if ev is not None and ev.blocked and (mark_reviewed or item.review_status == "reviewed"
-                                          or item.outcome_method is not None):
+def _set_status(item: MinuteItem, ev: Evaluation | None, mark_reviewed: bool | None) -> None:
+    started = item.outcome_method is not None or item.quorum_basis is not None
+    if ev is not None and ev.blocked and (mark_reviewed or item.review_status == "reviewed" or started):
         item.review_status, item.blocked_reason = "blocked", ev.blocked_reason
         return
     item.blocked_reason = None
@@ -188,6 +291,16 @@ def _set_status(item: MinuteItem, ev: rules.MotionEvaluation | None, mark_review
         item.review_status = "reviewed"
     elif mark_reviewed is False or item.review_status == "blocked":
         item.review_status = "needs_review"
+
+
+def _correct(session: Session, actor: Actor, item: MinuteItem, field: str, old: Any, new: Any, now: Any) -> None:
+    session.add(
+        Correction(
+            id=uuid7(), brokerage_id=item.brokerage_id, strata_id=item.strata_id, minute_item_id=item.id,
+            field=field, old_value=None if old is None else str(old), new_value=None if new is None else str(new),
+            category=FIELD_CATEGORY[field], made_by=actor.user_id, made_at=now,
+        )
+    )
 
 
 def update_item(
@@ -203,7 +316,17 @@ def update_item(
     unknown = set(changes) - set(FIELD_CATEGORY)
     if unknown:
         raise Invalid(f"Fields cannot be edited: {sorted(unknown)}", code="field_not_editable")
-    lots = strata_lot_count(session, item.strata_id)
+    item_type = changes.get("item_type", item.item_type)
+    if item_type != "quorum" and any(changes.get(f) is not None for f in QUORUM_INPUTS):
+        raise Invalid("Attendance figures belong on the quorum item.", code="quorum_fields_on_other_item")
+    if item_type != "motion" and any(changes.get(f) is not None for f in MOTION_ONLY):
+        raise Invalid("Outcome and vote fields belong on a motion.", code="motion_fields_on_other_item")
+    method = changes.get("outcome_method", item.outcome_method)
+    if method != "counted" and any(changes.get(f) is not None for f in COUNT_FIELDS):
+        # A show-of-cards motion stores no counts or threshold (B1-005).
+        raise Invalid("Counts and a threshold are recorded only when a precise count was taken. Choose "
+                      "'counted' to enter them.", code="counts_on_declared")
+    ctx = context(session, item)
     with session.no_autoflush:  # the row is written once, after the rules have run
         now = clock.now()
         for field, new in changes.items():
@@ -213,23 +336,24 @@ def update_item(
             if old == new:
                 continue
             setattr(item, field, new)
-            session.add(
-                Correction(
-                    id=uuid7(), brokerage_id=item.brokerage_id, strata_id=item.strata_id, minute_item_id=item.id,
-                    field=field, old_value=None if old is None else str(old),
-                    new_value=None if new is None else str(new),
-                    category=FIELD_CATEGORY[field], made_by=actor.user_id, made_at=now,
-                )
-            )
+            _correct(session, actor, item, field, old, new, now)
             if field == "declared_outcome":
                 # The manager's own selection, attested now; never pre-filled by the model.
                 item.outcome_attested_by = actor.user_id if new is not None else None
                 item.outcome_attested_at = now if new is not None else None
-            if field == "outcome_method" and new == "declared":
-                item.casting_vote = None
+            if field in ("quorum_basis", "quorum_statement"):
+                declared = item.quorum_basis == "declared"
+                item.quorum_attested_by = actor.user_id if declared else None
+                item.quorum_attested_at = now if declared else None
+        if item.outcome_method != "counted":
+            for field in COUNT_FIELDS:  # stale counts from an earlier "counted" choice are cleared, as corrections
+                old = getattr(item, field)
+                if old is not None:
+                    setattr(item, field, None)
+                    _correct(session, actor, item, field, old, None, now)
         if item.discrepancy_resolution == "recorded_as_declared" and not (item.discrepancy_note or "").strip():
             raise Invalid(rules.motion.BLOCK_NOTE, code="discrepancy_note_required")
-        ev = evaluate(session, item, lots)
+        ev = evaluate(session, item, ctx)
         _set_status(item, ev, mark_reviewed)
     session.flush()
     session.refresh(item)
@@ -316,8 +440,9 @@ def add_citation(session: Session, actor: Actor, item_id: uuid.UUID, body: dict[
         raise Invalid("bylaw_clause_id is required.") from exc
     clause = _check_clause(session, actor, clause_id, item.strata_id)
     quote = body.get("quoted_text")
-    if quote is not None and quote not in clause.body_text:
-        raise Invalid("The quotation must match the clause text exactly.", code="quote_not_exact")
+    if quote is not None and (not isinstance(quote, str) or not quote_ok(clause.body_text, quote)):
+        raise Invalid(f"The quotation must be at least {MIN_QUOTE_WORDS} words copied exactly from the clause.",
+                      code="quote_not_exact")
     old_value = None
     if body.get("replaces_citation_id"):
         old = session.get(MinuteItemCitation, uuid.UUID(body["replaces_citation_id"]), with_for_update=True)

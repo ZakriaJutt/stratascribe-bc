@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 
 # Bump on any change to this package (AGENTS.md "What to update when").
-RULES_VERSION = "rules-2026.11.1"
+RULES_VERSION = "rules-2026.11.2"  # .2: QuorumResult.required and stored quorum columns (B1-006)
 
 
 class RuleInputError(ValueError):

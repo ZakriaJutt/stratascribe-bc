@@ -24,7 +24,7 @@ from core import audit, clock, jobs
 from core.db import Actor
 from core.errors import Conflict, Invalid
 from core.ids import uuid7
-from core.meetings import current_authorization, get_meeting, strata_lot_count
+from core.meetings import current_authorization, get_meeting
 from core.models import (
     Approval,
     AudioAsset,
@@ -37,7 +37,7 @@ from core.models import (
     MinutesVersion,
     Transcript,
 )
-from core.review import evaluate
+from core.review import context, evaluate
 
 ATTESTATION_TEXT_VERSIONS = ("attest-2026.11.1",)
 NOT_EVIDENCED = "recording authority not evidenced"
@@ -52,6 +52,10 @@ def _canonical(items: list[MinuteItem], cites: dict[uuid.UUID, list[str]]) -> by
             "votes_abstained": i.votes_abstained, "eligible_votes": i.eligible_votes,
             "members_present": i.members_present, "casting_vote": i.casting_vote,
             "final_outcome": i.final_outcome, "discrepancy_note": i.discrepancy_note,
+            "discrepancy_resolution": i.discrepancy_resolution, "quorum_basis": i.quorum_basis,
+            "quorum_statement": i.quorum_statement, "present_count": i.present_count,
+            "eligible_count": i.eligible_count, "required_count": i.required_count, "quorum_met": i.quorum_met,
+            "rules_version": i.rules_version,
             "citations": sorted(cites.get(i.id, [])),
         }
         for i in items
@@ -100,18 +104,19 @@ def approve(session: Session, actor: Actor, meeting_id: uuid.UUID, body: dict[st
         select(MinuteItem).where(MinuteItem.minutes_version_id == v.id, MinuteItem.deleted_at.is_(None))
         .order_by(MinuteItem.position).with_for_update()
     ).all())
-    lots = strata_lot_count(session, m.strata_id)
     problems: list[dict[str, Any]] = []
+    ctx = context(session, items[0]) if items else None
     for i in items:
-        ev = evaluate(session, i, lots)  # every rule re-run server-side
+        ev = evaluate(session, i, ctx)  # every rule re-run server-side, motions and quorum (B1-006)
         if ev is not None and ev.blocked:
             i.review_status, i.blocked_reason = "blocked", ev.blocked_reason
-        if i.item_type == "motion" and i.review_status != "reviewed":
+        if i.item_type in ("motion", "quorum") and i.review_status != "reviewed":
             problems.append({"item_id": str(i.id), "position": i.position, "review_status": i.review_status,
                              "blocked_reason": i.blocked_reason})
     session.flush()
     if problems:
-        raise Conflict("Every motion must be reviewed and every blocker cleared.", code="items_not_ready",
+        raise Conflict("Every motion and quorum statement must be reviewed and every blocker cleared.",
+                       code="items_not_ready",
                        extra={"items": problems})
     cites: dict[uuid.UUID, list[str]] = {}
     for c in session.scalars(select(MinuteItemCitation).where(
