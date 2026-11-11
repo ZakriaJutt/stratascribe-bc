@@ -16,7 +16,7 @@ from collections.abc import Awaitable, Callable, Iterator
 from datetime import date
 from typing import Any
 
-from fastapi import Depends, FastAPI, Query, Request, Response
+from fastapi import BackgroundTasks, Depends, FastAPI, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select, text
@@ -28,27 +28,31 @@ from core import (
     activity,
     approval,
     audit,
+    auth,
     authz,
     buildings,
     bylaws,
     config,
     idempotency,
     jobs,
+    mail,
     meetings,
     pilot,
     qa,
+    ratelimit,
     review,
     sessions,
     storage,
+    team,
 )
 from core import logging as clog
 from core.db import Actor, session_for
 from core.errors import Conflict, DomainError, Invalid, NotFound, Unauthenticated
 from core.ids import uuid7
-from core.models import AudioAsset, AuditEvent, BaselineMeasurement, Transcript, TranscriptSegment, User
+from core.models import AudioAsset, AuditEvent, BaselineMeasurement, Transcript, TranscriptSegment
 
 Body = dict[str, Any]
-COOKIE = "ss_session"
+COOKIE = sessions.COOKIE
 CSRF_HEADER = "x-stratascribe-request"
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 log = clog.get_logger("api")
@@ -70,17 +74,23 @@ def _error(exc: DomainError, status: int | None = None) -> JSONResponse:
 
 
 def current_actor(request: Request) -> Actor:
-    token = request.cookies.get(COOKIE, "")
-    ws = sessions.resolve(token)
+    """The actor from the session cookie. ``sessions.resolve`` ends the session when it is idle, past
+    its absolute lifetime, or its user is no longer active with the same role (B2)."""
+    ws = sessions.resolve(request.cookies.get(COOKIE, ""))
     if ws is None:
         raise Unauthenticated("Sign in to continue.")
-    probe = Actor.user(ws.user_id, ws.brokerage_id, ws.role)
-    with session_for(probe) as s:
-        u = s.get(User, ws.user_id)
-        if u is None or u.status != "active" or u.role != ws.role or u.brokerage_id != ws.brokerage_id:
-            sessions.end(token)
-            raise Unauthenticated("Your session has ended.")
-    return probe
+    request.state.session = ws
+    return Actor.user(ws.user_id, ws.brokerage_id, ws.role)
+
+
+def set_cookie(response: Response, name: str, value: str, path: str = "/", max_age: int | None = None) -> None:
+    """Every cookie is HttpOnly, Secure and SameSite=Lax (TRD "Identity and tenancy")."""
+    response.set_cookie(name, value, httponly=True, secure=True, samesite="lax", path=path, max_age=max_age)
+
+
+def client_ip(request: Request) -> str:
+    # The direct peer. Behind the proposed proxy this must become the proxy's forwarded address.
+    return request.client.host if request.client else "unknown"
 
 
 def guard_request(request: Request) -> None:
@@ -223,7 +233,11 @@ def create_app() -> FastAPI:
                 authz.record_denial(actor, exc)
         if exc.code == "forbidden_request":
             exc.status = 403
-        return _error(exc)
+        resp = _error(exc)
+        retry = exc.extra.get("retry_after_seconds")
+        if exc.status == 429 and isinstance(retry, int):
+            resp.headers["Retry-After"] = str(retry)
+        return resp
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -264,13 +278,16 @@ def create_app() -> FastAPI:
         except Exception:  # noqa: BLE001
             checks["database"] = "unavailable"
         try:
-            sessions.client().ping()
+            ratelimit.client().ping()
             checks["redis"] = "ok"
         except Exception:  # noqa: BLE001
             checks["redis"] = "unavailable"
         try:
             st = storage.store()
-            ok = not isinstance(st, storage.LocalObjectStore) or st.root.is_dir()
+            if isinstance(st, storage.S3ObjectStore):
+                ok = st.ready()
+            else:
+                ok = not isinstance(st, storage.LocalObjectStore) or st.root.is_dir()
             checks["storage"] = "ok" if ok else "unavailable"
         except Exception:  # noqa: BLE001
             checks["storage"] = "unavailable"
@@ -279,8 +296,92 @@ def create_app() -> FastAPI:
                             status_code=200 if ready else 503)
 
     @app.get(v1 + "/me")
-    def me(actor: Actor = A) -> dict[str, Any]:
-        return {"user_id": str(actor.user_id), "brokerage_id": str(actor.brokerage_id), "role": actor.role}
+    def me(request: Request, actor: Actor = A) -> dict[str, Any]:
+        ws: sessions.Resolved = request.state.session
+        return {"user_id": str(actor.user_id), "brokerage_id": str(actor.brokerage_id), "role": actor.role,
+                "idle_expires_at": ws.idle_expires_at.isoformat(),
+                "absolute_expires_at": ws.absolute_expires_at.isoformat()}
+
+    # ---- sign-in (B2, T-2.2.2): emailed link plus authenticator code
+    def send_later(tasks: BackgroundTasks, message: mail.Message | None, kind: str) -> None:
+        if message is not None:
+            tasks.add_task(mail.send, message, kind)
+
+    @app.post(v1 + "/auth/magic-link")
+    def magic_link(request: Request, tasks: BackgroundTasks, body: Body = B) -> JSONResponse:
+        guard_request(request)
+        nonce = request.cookies.get(auth.NONCE_COOKIE, "")
+        if not (20 <= len(nonce) <= 100):
+            nonce = auth.new_nonce()
+        send_later(tasks, auth.request_link(body.get("email"), client_ip(request), nonce, body.get("next")),
+                   "sign_in_link")
+        resp = JSONResponse({"status": "check_email",
+                             "message": "Check your email. If the address belongs to a member, a sign-in link is "
+                                        "on its way."}, status_code=202)
+        set_cookie(resp, auth.NONCE_COOKIE, nonce, path=v1 + "/auth", max_age=cfg.sign_in_link_seconds)
+        return resp
+
+    @app.get(v1 + "/auth/callback")
+    def callback(request: Request, token: str = Query("", max_length=200)) -> dict[str, str]:
+        return auth.check_link(token, request.cookies.get(auth.NONCE_COOKIE))
+
+    @app.post(v1 + "/auth/totp/enrol")
+    def totp_enrol(request: Request, body: Body = B) -> dict[str, str]:
+        guard_request(request)
+        return auth.enrol(body.get("token"), request.cookies.get(auth.NONCE_COOKIE))
+
+    @app.post(v1 + "/auth/totp/verify")
+    def totp_verify(request: Request, body: Body = B) -> JSONResponse:
+        guard_request(request)
+        done = auth.verify(body.get("token"), request.cookies.get(auth.NONCE_COOKIE), body.get("code"))
+        resp = JSONResponse({"signed_in": True, "next": done.next_path, "role": done.role})
+        set_cookie(resp, COOKIE, done.token)
+        resp.delete_cookie(auth.NONCE_COOKIE, path=v1 + "/auth", secure=True, httponly=True, samesite="lax")
+        return resp
+
+    @app.post(v1 + "/auth/sign-out")
+    def sign_out(request: Request, actor: Actor = A) -> JSONResponse:
+        auth.sign_out(request.cookies.get(COOKIE, ""), actor)
+        resp = JSONResponse({"signed_out": True})
+        resp.delete_cookie(COOKIE, path="/", secure=True, httponly=True, samesite="lax")
+        return resp
+
+    # ---- team (S-05): invitations and member changes, managing broker only
+    @app.get(v1 + "/members")
+    def members(actor: Actor = A) -> list[dict[str, Any]]:
+        return read(actor, lambda s: team.list_members(s, actor))
+
+    @app.post(v1 + "/invitations")
+    def invite(request: Request, tasks: BackgroundTasks, actor: Actor = A, body: Body = B) -> JSONResponse:
+        outbox: list[mail.Message] = []
+
+        def fn(s: Session) -> tuple[int, Any]:
+            u, msg = team.invite(s, actor, body)
+            outbox.append(msg)
+            return 201, team.member_out(u)
+        resp = mutate(actor, request, body, fn)
+        for m in outbox:  # empty on an idempotent replay: no second email
+            send_later(tasks, m, "invitation")
+        return resp
+
+    @app.post(v1 + "/invitations/{user_id}/resend")
+    def resend(user_id: str, request: Request, tasks: BackgroundTasks, actor: Actor = A,
+               body: Body = B) -> JSONResponse:
+        outbox: list[mail.Message] = []
+
+        def fn(s: Session) -> tuple[int, Any]:
+            u, msg = team.resend(s, actor, uid(user_id))
+            outbox.append(msg)
+            return 200, team.member_out(u)
+        resp = mutate(actor, request, body, fn)
+        for m in outbox:
+            send_later(tasks, m, "invitation")
+        return resp
+
+    @app.patch(v1 + "/members/{user_id}")
+    def update_member(user_id: str, request: Request, actor: Actor = A, body: Body = B) -> JSONResponse:
+        return mutate(actor, request, body,
+                      lambda s: (200, team.member_out(team.update_member(s, actor, uid(user_id), dict(body)))))
 
     # ---- buildings
     @app.get(v1 + "/buildings")

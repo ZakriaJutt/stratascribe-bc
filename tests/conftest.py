@@ -20,10 +20,18 @@ for line in (ROOT / "tools" / "env.test").read_text().splitlines():
     if line.strip() and not line.startswith("#"):
         k, _, v = line.partition("=")
         os.environ[k.strip()] = v.strip()
+# Local MinIO credentials (B2) come from the gitignored tools/.env; only S3_* is taken from it, so the
+# suite's default store stays the local file store and the MinIO tests build their own store.
+_dotenv = ROOT / "tools" / ".env"
+if _dotenv.exists():
+    for line in _dotenv.read_text().splitlines():
+        k, _, v = line.partition("=")
+        if k.strip().startswith("S3_") and v.strip():
+            os.environ[k.strip()] = v.strip()
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from core import clock, config, devdata, sessions, storage  # noqa: E402
+from core import clock, config, devdata, ratelimit, sessions, storage  # noqa: E402
 from core.devdata import World  # noqa: E402
 from tests.helpers import Api  # noqa: E402
 
@@ -33,7 +41,7 @@ def world() -> Iterator[World]:
     config.reset()
     clock.set_clock(None)
     devdata.reset_all()
-    r = sessions.client()
+    r = ratelimit.client()
     for k in r.scan_iter("stratascribe:test:*"):
         r.delete(k)
     root = ROOT / config.settings().object_store_root

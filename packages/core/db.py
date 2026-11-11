@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from core import config
 
-ActorKind = Literal["user", "service", "system", "operator"]
+ActorKind = Literal["user", "service", "system", "operator", "auth"]
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,12 @@ class Actor:
     def system(cls) -> Actor:
         """Lease jobs, heartbeats and the retention sweep only (policy-scoped, no content)."""
         return cls("system", role="system")
+
+    @classmethod
+    def auth(cls) -> Actor:
+        """The sign-in context (B2): users, sign-in links and web sessions only; no building table.
+        Used only by ``core.auth`` and ``core.sessions``."""
+        return cls("auth", role="auth")
 
     @classmethod
     def operator(cls, operator_id: uuid.UUID, brokerage_id: uuid.UUID, support_grant_id: uuid.UUID) -> Actor:

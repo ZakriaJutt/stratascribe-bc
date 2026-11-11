@@ -1,12 +1,13 @@
 # StrataScribe BC — local commands (B1). Services run directly; the TRD's Compose setup stays proposed.
 # Python 3.12 venv at tools/.venv. PostgreSQL 16 on localhost:5432, Redis db 5, API port 8106.
+# B2: SMTP to local Mailpit (127.0.0.1:1025); MinIO credentials in the gitignored tools/.env (see tools/.env.example).
 
 SHELL := /bin/bash
 PY := tools/.venv/bin/python
 VENV := tools/.venv
 PYTHONPATH := $(CURDIR)/packages:$(CURDIR)/apps
 TEST_ENV := set -a && . tools/env.test && set +a
-DEV_ENV := set -a && . $(if $(wildcard tools/env.local),tools/env.local,tools/env.example.local) && set +a
+DEV_ENV := set -a && . $(if $(wildcard tools/env.local),tools/env.local,tools/env.example.local) $(if $(wildcard tools/.env),&& . tools/.env) && set +a
 APP_ROLE := stratascribe_app
 
 .PHONY: venv db-role migrate-test reset-test-db migrate-dev seed dev api worker test test-unit lint typecheck check-migrations check

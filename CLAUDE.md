@@ -2,7 +2,7 @@
 
 Read [AGENTS.md](AGENTS.md) first. It is canonical for reading order, sources of truth, conventions, tenant safety, migrations, tests, Git hygiene and completion reporting. This file adds only what is specific to this product.
 
-**State:** build milestone B1 (foundation and deterministic core), authorised by the owner on 2026-11-11 before the Phase 0 gate. See the AGENTS.md state line and `verification-report-fixing.md` "B1 build record" for what ran.
+**State:** build milestones B1 (foundation and deterministic core) and B2 (sign-in, Mailpit email, MinIO storage), authorised by the owner on 2026-11-11 before the Phase 0 gate. See the AGENTS.md state line and `verification-report-fixing.md` "B1 build record" and "B2 build record" for what ran.
 
 ## The buyer's workflow in six lines
 

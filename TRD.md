@@ -150,7 +150,7 @@ All bodies JSON unless noted. All mutating calls accept an `Idempotency-Key` hea
 
 | Method and path | Purpose | Roles | Notes |
 |---|---|---|---|
-| `POST /auth/magic-link`, `GET /auth/callback`, `POST /auth/totp/enrol`, `POST /auth/totp/verify`, `POST /auth/sign-out`, `GET /me` | Sign-in link, redemption, authenticator enrolment and check, session, current actor | Any | Same response whether or not the email exists; rate limited |
+| `POST /auth/magic-link`, `GET /auth/callback`, `POST /auth/totp/enrol`, `POST /auth/totp/verify`, `POST /auth/sign-out`, `GET /me` | Sign-in link, link check, authenticator enrolment and check (which redeems the link and creates the session), sign-out, current actor | Any | Same response whether or not the email exists; rate limited. B2: `GET /auth/callback?token=` only checks the link and answers `enrol` or `code` (no state change, so a mail scanner that prefetches the link cannot use it up); the link is used up by a correct code at `POST /auth/totp/verify` `{token, code}`; `enrol` and `verify` take the token in the JSON body. `GET /me` also returns the idle and absolute expiry times for the expiry warning |
 | `POST /brokerage`, `GET /brokerage`, `PATCH /brokerage` | Onboarding and settings | Broker | — |
 | `GET /members`, `POST /invitations`, `POST /invitations/{id}/resend`, `PATCH /members/{id}` | Team | Broker | Deactivation ends sessions |
 | `GET /buildings`, `POST /buildings`, `GET /buildings/{id}`, `PATCH /buildings/{id}` | Buildings | List and read: Manager. Create and edit: Broker | List returns assigned buildings only for a strata manager |
@@ -414,13 +414,13 @@ The independent reviewer read OWASP ASVS **5.0.0** on 2026-11-10 and cited the r
 
 | ASVS 5.0.0 (as cited in review) | Control in this plan | Planned test | Status |
 |---|---|---|---|
-| V6.1.1, V6.3.1, V2.4.1, V6.6.3 rate limiting and anti-automation | Rate-limit table in [Identity and tenancy](#identity-and-tenancy) | I-17 | Not run |
-| V6.5.5, V6.6.2 out-of-band code lifetime, entropy, binding | 10 minutes, 32 random bytes, single use, bound to the requesting browser | I-18 | Not run |
-| V6.3.3 multi-factor at Level 2 | Link plus authenticator code for users; mandatory for operators | I-18, P-4 | Not run |
+| V6.1.1, V6.3.1, V2.4.1, V6.6.3 rate limiting and anti-automation | Rate-limit table in [Identity and tenancy](#identity-and-tenancy) | I-17 | B2: sign-in limits (5 per email, 20 per IP per hour, 5 codes per link) pass; the other limits are not built |
+| V6.5.5, V6.6.2 out-of-band code lifetime, entropy, binding | 10 minutes, 32 random bytes, single use, bound to the requesting browser | I-18 | B2: pass |
+| V6.3.3 multi-factor at Level 2 | Link plus authenticator code for users; mandatory for operators | I-18, P-4 | B2: users pass (I-18); operator sign-in not built |
 | V6.3.6 (Level 3): email is not used as either a single-factor or multi-factor authentication mechanism (wording as quoted by the reviewer) | **Not met.** The emailed sign-in link is one of the pilot's two factors, for users and operators alike | — | **Accepted risk** for the pilot: a compromised mailbox leaves only the authenticator code between an attacker and recordings. Removing email as a factor means OIDC or passkeys (see AD-10) |
-| V7.3.1, V7.3.2 idle and absolute session lifetime | 60 minutes idle, 12 hours absolute | I-20 | Not run |
-| V7.4.1, V7.4.2 session termination | Sign-out; deactivation ends sessions | P-3, acceptance check of T-2.2.2 | Not run |
-| V3.5.1 cross-site request forgery | SameSite=Lax, custom header, Origin check | I-19 | Not run |
+| V7.3.1, V7.3.2 idle and absolute session lifetime | 60 minutes idle, 12 hours absolute | I-20 | B2: pass |
+| V7.4.1, V7.4.2 session termination | Sign-out; deactivation ends sessions | P-3, acceptance check of T-2.2.2 | B2: pass (sign-out, deactivation, role change, authenticator reset) |
+| V3.5.1 cross-site request forgery | SameSite=Lax, custom header, Origin check | I-19 | B1: header and Origin pass; B2: SameSite=Lax cookies and the sign-in routes pass |
 | V8.1.1, V8.2.1, V8.2.2, V8.3.1, V8.4.1 access control | `core.authz`, forced row-level security, API-streamed files | P-1 to P-6, I-11 | Not run |
 | V8.4.2 administrative access | Operator path with support grant | P-4 | Not run |
 | V5.1.1, V5.2.1, V5.2.2, V5.2.3 upload types, size, archive limits | [File handling](#file-handling) | I-24, I-2, I-3 | Not run |
@@ -515,12 +515,19 @@ Accepted debt for the pilot: single host; manual invoicing; one brokerage per us
 **B1 build notes (2026-11-11; the decisions above are unchanged, these record where the build differs or is incomplete).**
 
 - **pgvector is not available** on the PostgreSQL 16 used for B1. Clause retrieval sits behind `ai.search.ClauseSearch`; the B1 implementation is PostgreSQL full-text search over the question's words, with `strata_id` and `status = 'current'` in the same query under row-level security. Embedding columns are not created. Hybrid vector retrieval (T-4.2.1 a) waits for an environment with pgvector.
-- **Web sessions** are stored server-side in Redis (database index 5 locally) under an HMAC of the cookie token, holding only user, brokerage, role and times; no tenant content, so "No application cache holds tenant data" still holds. The magic-link and authenticator sign-in (T-2.2.2) and the rate limits are not built.
+- **Web sessions** (B1 in Redis; **B2: moved to PostgreSQL**, table `web_sessions`) are stored server-side under an HMAC of the cookie token, holding only user, brokerage, role and times. Redis now holds only rate-limit counters keyed by HMACs of the email or IP address.
 - **Bylaw upload** accepts plain text as JSON in B1 (`POST /buildings/{id}/bylaw-documents` with `text`), split synchronously; multipart PDF/DOCX upload, scanning and the `index_bylaws` job are not built.
 - **Upload parts** are appended with `PATCH /uploads/{id}?offset=N` (body = bytes); a wrong offset returns 409 with `received_bytes`. Malware scanning is not built.
 - **System context.** The reconciler, job leasing and retention sweep use `app.role = 'system'` on the application role instead of a separate `app_system` database role (schema.md "B1 implementation notes").
 - **Review round 1 (2026-11-11).** Mutating requests need `Origin` or, failing that, `Referer` equal to `PUBLIC_BASE_URL` (B1-010); unexpected errors and invalid parameters return the JSON error envelope with a correlation ID (B1-011); audio is streamed in chunks with RFC 9110 single ranges, 400 for a malformed range and 416 for one outside the file (B1-007); `rules-2026.11.2` adds the required number to quorum results (B1-006).
 - **Model output never sets an outcome.** In B1 the extraction's suggested method is kept only in `ai_suggestion` (`suggested_method`); `outcome_method` stays empty until the manager chooses, which is stricter than "pre-selects a method" above.
+
+**B2 build notes (2026-11-11).**
+
+- **Sign-in built as designed (AD-10, T-2.2.2):** `core.auth` (link request, check, enrolment, code), `core.totp` (RFC 6238, SHA-1, 6 digits, 30 seconds, one step of tolerance, a code's step can be used once; secret encrypted with AES-256-GCM under `TOTP_ENCRYPTION_KEY`), `core.sessions` (PostgreSQL), `core.ratelimit` (Redis), `core.team` (invitations, member changes), `core.mail` (SMTP). The sign-in code runs in its own database context (`app.role = 'auth'`): it may read and update `users` and use `sign_in_links` and `web_sessions`; it sees no building table. Every cookie is HttpOnly, Secure, SameSite=Lax; the session cookie has no Max-Age (the server enforces 60 minutes idle and 12 hours absolute); the nonce cookie `ss_signin` is scoped to `/api/v1/auth` for 10 minutes and is reused by the same browser for later links.
+- **Email** goes through SMTP only (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_STARTTLS`, `EMAIL_FROM`); locally Mailpit on 127.0.0.1:1025. It is sent after the response (background task), and a failed send is logged by kind only, so the answer to a sign-in request never depends on whether the address exists.
+- **Object storage** through the S3 API: `S3ObjectStore` in `core.storage`, selected by `STORAGE_BACKEND=s3` with `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (locally MinIO, bucket `stratascribe-dev`, credentials only in the gitignored `tools/.env`). Keys are unchanged (`core.storage.key`); a resumable upload's `tmp` object is held as chunk objects under `{key}/.chunks/{offset}` and composed by a multipart upload when the upload completes. AD-11 is unchanged: no presigned or public URL is issued; audio is streamed by the API after `core.authz`. `OBJECT_STORE_PREFIX` namespaces all objects (tests use their own and delete it).
+- **Not built in B2:** operator sign-in (`/operator/auth/…`; there are no operator routes yet, T-2.2.3 f); brokerage onboarding S-02 (`/brokerage`); the rate limits other than sign-in (questions, uploads, exports, the 120-per-minute default); the expiry-warning dialog (no web frontend). The client IP for the per-IP limit is the direct peer; behind the proposed proxy it must become the proxy's forwarded address.
 
 ## 12. Glossary
 

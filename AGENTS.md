@@ -2,7 +2,7 @@
 
 Canonical instructions for any coding or documentation agent working in this repository. `CLAUDE.md` adds product-specific guidance and defers to this file.
 
-**Current state: build milestone B1 (foundation and deterministic core) on branch `feat/b1-foundation`, authorised by the owner on 2026-11-11 before the Phase 0 sales gate.** Python packages, three Alembic migrations with row-level security, an API and a worker exist and run locally against synthetic data only; transcription and the language model are fakes behind interfaces. There is no web frontend, no deployment, no real provider and no sign-in flow (web sessions are created only by tests). What ran and what did not is recorded in `verification-report-fixing.md` section "B1 build record". Commands not marked as existing below are still **proposed**; do not report a proposed command as run.
+**Current state: build milestone B2 (sign-in and local services) on branch `feat/b2-local-auth`, on top of B1 (foundation and deterministic core, `feat/b1-foundation`), authorised by the owner on 2026-11-11 before the Phase 0 sales gate.** Python packages, eight Alembic migrations with row-level security, an API and a worker run locally against synthetic data only. Sign-in is built (emailed link plus authenticator code, sessions in PostgreSQL, sign-in rate limits, invitations and member changes); email goes over SMTP to the local Mailpit inbox; files can be stored in local MinIO through the S3 API (`STORAGE_BACKEND=s3`). Transcription and the language model are still fakes; there is no web frontend, no operator sign-in, no deployment and no real provider. What ran and what did not is recorded in `verification-report-fixing.md` sections "B1 build record" and "B2 build record". Commands not marked as existing below are still **proposed**; do not report a proposed command as run.
 
 ## What this repository is for
 
@@ -76,10 +76,15 @@ One owner per concern. Extend the owner; do not write a second one.
 | Logging and redaction | `core.logging` | `packages/core/logging.py` (JSON, correlation ID, allow-list redactor) |
 | Access decisions | `core.authz` | `packages/core/authz.py` (`locate()`, 403/404, denial audit) |
 | Database sessions with tenant context | `core.db.session_for` | `packages/core/db.py` (`Actor`, `session_for()`) |
-| Storage keys and download links | `core.storage` | `packages/core/storage.py` (`key()`, `ScopedStore`, local store; S3 adapter not built) |
+| Storage keys and download links | `core.storage` | `packages/core/storage.py` (`key()`, `ScopedStore`, `LocalObjectStore`, `S3ObjectStore` for MinIO/S3, `store()` by `STORAGE_BACKEND`) |
 | Job states and transitions | `core.jobs` | `packages/core/jobs.py` (`transition()`, `enqueue()`, `lease()`, `reconcile()`) |
 | Audit events | `core.audit` | `packages/core/audit.py` (`record()`) |
-| Web sessions (identity only) | `core.sessions` | `packages/core/sessions.py` (Redis db 5; sign-in flow not built) |
+| Web sessions (identity only) | `core.sessions` | `packages/core/sessions.py` (PostgreSQL `web_sessions`; `resolve()`, `end()`, `end_all_for_user()`; `create()` is called by sign-in and by tests) |
+| Sign-in (link, authenticator, code) | `core.auth` | `packages/core/auth.py` (`request_link()`, `check_link()`, `enrol()`, `verify()`, `sign_out()`, `safe_next()`) |
+| Authenticator codes and secret encryption | `core.totp` | `packages/core/totp.py` (RFC 6238; AES-256-GCM under `TOTP_ENCRYPTION_KEY`) |
+| Rate limits | `core.ratelimit` | `packages/core/ratelimit.py` (Redis db 5, HMAC-keyed; sign-in limits built) |
+| Outbound email | `core.mail` | `packages/core/mail.py` (`Message`, `SmtpMailer`, `send()`; Mailpit locally) |
+| Team: invitations, member changes | `core.team` | `packages/core/team.py` |
 | Idempotency keys | `core.idempotency` | `packages/core/idempotency.py` |
 | Meetings, recording authority, uploads | `core.meetings` | `packages/core/meetings.py` |
 | Review, corrections, item citations | `core.review` | `packages/core/review.py` |
@@ -116,6 +121,7 @@ Before adding a helper, search these packages. If something close exists, change
 
 ## Tests
 
+- Local services for B2: Mailpit (SMTP 127.0.0.1:1025, inbox http://127.0.0.1:8025) and MinIO (http://127.0.0.1:9000, bucket `stratascribe-dev`). MinIO credentials go in the gitignored `tools/.env` (names in `tools/.env.example`); `make dev` and the test suite read it. Tests that need MinIO are skipped, with the reason, when it is absent.
 - Commands that exist (B1, root `Makefile`): `make venv`, `make db-role`, `make reset-test-db`, `make migrate-dev`, `make seed`, `make dev` (API on 8106 and worker run directly, waits for `/readyz`), `make stop`, `make test` (drops and re-migrates the test schema, then runs every test), `make test-unit`, `make lint` (ruff), `make typecheck` (mypy strict), `make check-migrations`. Still proposed: `make eval`, `make deploy TAG=…`, `make rollback TAG=…`, the Compose stack.
 - Integration and permission tests run against a real PostgreSQL with row-level security on. Do not mock the database for access tests.
 - Any change to prompts, model IDs or retrieval must re-run the AI fixtures; citation validity and refusal must stay at 100%.

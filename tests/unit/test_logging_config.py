@@ -44,6 +44,7 @@ BASE = {
     "PUBLIC_BASE_URL": "http://localhost:3106",
     "OBJECT_STORE_ROOT": "var/x",
     "SESSION_SECRET": "s" * 40,
+    "TOTP_ENCRYPTION_KEY": "dGVzdC1vbmx5LXRvdHAta2V5LW5vdC1mb3ItdXNlISE=",
 }
 
 

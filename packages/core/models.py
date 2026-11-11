@@ -144,6 +144,10 @@ class User(Base):
     last_sign_in_at: Mapped[datetime | None] = mapped_column(TS)
     totp_secret_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
     totp_enrolled_at: Mapped[datetime | None] = mapped_column(TS)
+    # B2: replay guard (the last accepted 30-second step) and invitation provenance.
+    totp_last_used_step: Mapped[int | None] = mapped_column(BigInteger)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    invited_at: Mapped[datetime | None] = mapped_column(TS)
     created_at: Mapped[datetime] = created()
     updated_at: Mapped[datetime] = updated()
     row_version: Mapped[int] = row_version()
@@ -947,6 +951,51 @@ class IdempotencyKey(Base):
     __table_args__ = (
         building_fk(),
         Index("ix_idempotency_expires", "expires_at"),
+    )
+
+
+class SignInLink(Base):
+    """An emailed sign-in link (B2, T-2.2.2). Only HMACs of the link token and the browser nonce are
+    stored. Not tenant content; reachable only from the sign-in context (``Actor.auth()``)."""
+
+    __tablename__ = "sign_in_links"
+    id: Mapped[uuid.UUID] = pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    nonce_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    next_path: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TS, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(TS, nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(TS)
+    failed_codes: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    __table_args__ = (
+        CheckConstraint("failed_codes BETWEEN 0 AND 5", name="failed_codes_range"),
+        CheckConstraint("expires_at > created_at", name="expiry_after_creation"),
+        Index("ix_sign_in_links_user_id", "user_id"),
+    )
+
+
+class WebSession(Base):
+    """Server-side web session (B2; TRD "Identity and tenancy"). The cookie holds a random token; the
+    row holds its HMAC. Idle and absolute expiry are enforced on every request."""
+
+    __tablename__ = "web_sessions"
+    id: Mapped[uuid.UUID] = pk()
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    brokerage_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("brokerages.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TS, nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(TS, nullable=False)
+    absolute_expires_at: Mapped[datetime] = mapped_column(TS, nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(TS)
+    end_reason: Mapped[str | None] = mapped_column(Text)
+    __table_args__ = (
+        ForeignKeyConstraint(["user_id", "brokerage_id"], ["users.id", "users.brokerage_id"]),
+        enum_check("role", ("managing_broker", "strata_manager")),
+        enum_check("end_reason", ("signed_out", "idle", "absolute", "deactivated", "role_changed",
+                                  "authenticator_reset", "user_inactive")),
+        Index("ix_web_sessions_user_id", "user_id"),
     )
 
 

@@ -16,6 +16,8 @@ erDiagram
   brokerages ||--o{ strata_corporations : manages
   brokerages ||--o| subscriptions : holds
   users ||--o{ building_assignments : has
+  users ||--o{ sign_in_links : requests
+  users ||--o{ web_sessions : holds
   strata_corporations ||--o{ building_assignments : grants
   strata_corporations ||--o{ meetings : holds
   strata_corporations ||--o{ bylaw_documents : files
@@ -87,7 +89,37 @@ Sens. M. Unique: `lower(legal_name)` is **not** unique (two brokerages may share
 | status | text | no | 'invited' | invited, active, deactivated |
 | last_sign_in_at | timestamptz | yes | — | — |
 
-`totp_secret_encrypted bytea` (null until enrolled) and `totp_enrolled_at` complete the row. Sens. M. Constraint: a trigger refuses to deactivate or demote the last active managing broker of a brokerage. Platform operators are **not** rows in this table; see `operators` below.
+`totp_secret_encrypted bytea` (null until enrolled) and `totp_enrolled_at` complete the row. **B2 (migration 0008):** `totp_last_used_step bigint` null (the last accepted 30-second step; a code for that step or an earlier one is refused), `invited_by uuid` null (FK users), `invited_at timestamptz` null. `totp_secret_encrypted` is AES-256-GCM under `TOTP_ENCRYPTION_KEY` with the user id as associated data; it holds a pending secret while `totp_enrolled_at` is null. Policies `auth_read` and `auth_update` admit the sign-in context (`app.role = 'auth'`). Sens. M. Constraint: a trigger refuses to deactivate or demote the last active managing broker of a brokerage. Platform operators are **not** rows in this table; see `operators` below.
+
+### sign_in_links (B2, migration 0008)
+
+| Field | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| id | uuid | no | — | PK |
+| user_id | uuid | no | — | FK users; index |
+| token_hash | bytea | no | — | Unique; HMAC-SHA256 of the 32-byte link token under `SESSION_SECRET` |
+| nonce_hash | bytea | no | — | HMAC of the requesting browser's nonce cookie |
+| next_path | text | yes | — | Same-site path only (validated before storing) |
+| created_at, expires_at | timestamptz | no | — | CHECK `expires_at > created_at`; 10 minutes |
+| consumed_at | timestamptz | yes | — | Set when a correct code is accepted; single use |
+| failed_codes | smallint | no | 0 | CHECK 0-5; at 5 the link is dead |
+
+Not tenant content and no email address. RLS forced; policy `auth_flow` admits only the sign-in context. Sens. M. Retention: rows are kept with the audit trail for now; a purge job is not built.
+
+### web_sessions (B2, migration 0008; replaces the B1 Redis store)
+
+| Field | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| id | uuid | no | — | PK |
+| token_hash | bytea | no | — | Unique; HMAC of the cookie token |
+| brokerage_id, user_id | uuid | no | — | Composite FK to `users (id, brokerage_id)`; index on `user_id` |
+| role | text | no | — | managing_broker, strata_manager (the role at sign-in; a different current role ends the session) |
+| created_at, last_seen_at, absolute_expires_at | timestamptz | no | — | Idle 60 minutes from `last_seen_at`; absolute 12 hours from creation |
+| ended_at, end_reason | timestamptz, text | yes | — | signed_out, idle, absolute, deactivated, role_changed, authenticator_reset, user_inactive |
+
+RLS forced. Policies: `auth_flow` (sign-in context: create, resolve, end); `own_or_broker` (SELECT) and `end_own_or_broker` (UPDATE) for the user's own rows and the managing broker of the brokerage. No tenant content. Sens. M.
+
+`app_email_in_use(email)` (SECURITY DEFINER): true when any user or operator has the address; used only to refuse an invitation with the generic "This address cannot be invited".
 
 ### operators
 
@@ -418,6 +450,7 @@ Row-level security is enabled and **forced** on every tenant table. Policies, in
 2. **Building policy (all building-owned tables):** additionally, either `current_setting('app.role') = 'managing_broker'`, or an unrevoked `building_assignments` row exists for `(strata_id, current_setting('app.user_id'))`, or the session is a service actor whose `app.strata_id` equals the row's `strata_id`, or `app.role = 'operator'` and the `support_grants` row named by `app.support_grant_id` is unexpired, unrevoked, belongs to this brokerage, is open to `app.operator_id`, and names this row's meeting (tables without a `meeting_id`, such as bylaws and questions, are never visible to an operator).
 3. **Own-rows policy:** `baseline_measurements` and `review_sessions` are visible to their user and to the managing broker.
 4. **Global read:** `statute_sections` is readable by all; writable by none of the application roles.
+5. **Sign-in context (B2):** `app.role = 'auth'` with no brokerage, used only by `core.auth` and `core.sessions`: reads and updates `users`, reads and writes `sign_in_links` and `web_sessions`, appends audit events as `system`; every building policy is false for it.
 
 If the session variables are not set, the policies evaluate to false and every query returns nothing. That is the default-deny.
 
@@ -432,6 +465,8 @@ Role permissions by action:
 | Bylaws: upload, confirm | Yes | Yes | 403 | 404 | Writes clauses | No |
 | Ask bylaw question | Yes | Yes | 403 | 404 | — | No |
 | Assign managers, team, retention, deletion, audit, pilot report | Yes | No | No | 404 | — | No |
+| Sign in, sign out, own sessions (B2) | Own | Own | Own | — | — | Separate path (not built) |
+| Invite, resend, deactivate, change role, reset authenticator (B2) | Own brokerage | 403 | 403 | 404 | — | No |
 | Own baseline and time reports | Yes (own rows; reads all) | Yes | Yes (own baseline rows, building optional) | — | — | No |
 
 **Uniqueness scope:** email is global; strata plan number is per brokerage; meeting type and date per building; audio checksum per meeting; bylaw checksum per building; job idempotency keys per brokerage, building, meeting and kind (B1-002); stored request responses per user, route and key, visible only within their brokerage and building.
@@ -497,6 +532,12 @@ Built in B1 and covered by tests listed in `verification-report-fixing.md` "B1 b
 - **Composite foreign keys** `(child_id, strata_id)` to `(parent.id, parent.strata_id)` on every building-owned child (meeting children, transcript segments, items, citations, corrections, clauses, Q&A citations), in addition to `(strata_id, brokerage_id)` to `strata_corporations`.
 - **Triggers:** `row_version` increment on mutable tables; system-context column limit on `audio_assets` (only `delete_after`, `deleted_at`, `upload_state`, `received_bytes` may change; B1-008); append-only on `audit_events`, `corrections`, `approvals`; supersede-only on `recording_authorizations`; immutability of approved `minutes_versions` and their `minute_items`; item-citation check (same building via FK, current document, meaningful verbatim quote when given); Q&A citation check (current clause, meaningful verbatim quote); deferred "answered needs a validated citation" on `qa_interactions`; last active managing broker.
 - **Not created in B1:** `subscriptions`, `exports`, `deletion_requests`, `backfill_progress`; the `vector` extension and embedding columns. (Quorum attendance fields were added in migration 0004 after review round 1.)
+
+## B2 implementation notes (2026-11-11)
+
+- **Migration 0007** (round-3 hardening): see `minutes_versions`.
+- **Migration 0008:** `sign_in_links`, `web_sessions`, the new `users` columns, the sign-in context policies, `app_email_in_use`, and the audit `append` policy widened to `brokerage_id = app_brokerage() OR app.role = 'system' OR (app.role = 'auth' AND actor_type = 'system')`. Session variable `app.role` gains the value `auth`. The new tables were created in a migration on empty tables, so no concurrent index build was needed.
+- **Object keys** are unchanged in the S3 store; an in-progress upload's chunk objects sit under the same building prefix (`{key}/.chunks/{offset}`) and are deleted when the upload completes, fails, or is swept.
 
 ## Migrations
 

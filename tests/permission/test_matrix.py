@@ -71,8 +71,14 @@ def templated_routes() -> set[tuple[str, str]]:
     return out
 
 
+# Brokerage-level team routes (B2): no building, so the expected answers differ from P-1 (403 for a
+# strata manager, 404 for another brokerage's managing broker). Covered row by row in
+# tests/integration/test_b2_auth.py::test_b2_team_routes_broker_only_and_tenant_scoped.
+TEAM_ROUTES = {("PATCH", "/api/v1/members/{user_id}"), ("POST", "/api/v1/invitations/{user_id}/resend")}
+
+
 def test_every_route_with_an_id_has_a_matrix_row() -> None:
-    missing = templated_routes() - set(ROUTE_BODIES)
+    missing = templated_routes() - set(ROUTE_BODIES) - TEAM_ROUTES
     assert not missing, f"add permission rows for: {sorted(missing)}"
 
 

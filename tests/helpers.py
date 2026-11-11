@@ -121,3 +121,35 @@ def review_quorum(api: Api, meeting_id: str, **fields: Any) -> dict[str, Any]:
     r = api.patch(f"/minute-items/{q['id']}", {**body, "reviewed": True}, headers={"If-Match": str(q["row_version"])})
     assert r.status_code == 200, r.text
     return dict(r.json())
+
+
+# ---------------------------------------------------------------- local Mailpit inbox (B2)
+# The inbox is shared with other local projects: always filter by a recipient this test created.
+
+
+def mailpit_url() -> str:
+    return os.environ.get("MAILPIT_API_URL", "http://127.0.0.1:8025/api/v1")
+
+
+def mailpit_find(to: str) -> list[dict[str, Any]]:
+    import httpx
+
+    r = httpx.get(mailpit_url() + "/search", params={"query": f'to:"{to}"'}, timeout=10)
+    r.raise_for_status()
+    return list(r.json().get("messages") or [])
+
+
+def mailpit_text(message_id: str) -> str:
+    import httpx
+
+    r = httpx.get(f"{mailpit_url()}/message/{message_id}", timeout=10)
+    r.raise_for_status()
+    return str(r.json()["Text"])
+
+
+def mailpit_delete(to: str) -> None:
+    import httpx
+
+    ids = [m["ID"] for m in mailpit_find(to)]
+    if ids:
+        httpx.request("DELETE", mailpit_url() + "/messages", json={"IDs": ids}, timeout=10).raise_for_status()

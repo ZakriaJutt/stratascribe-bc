@@ -38,6 +38,7 @@ ALLOWED_FIELDS = frozenset(
         "worker_id",
         "count",
         "fingerprint",
+        "kind",
         "port",
         "target_type",
         "target_id",
