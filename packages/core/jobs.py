@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from core import clock
 from core import logging as clog
 from core.db import Actor, session_for
+from core.errors import Conflict
 from core.ids import uuid7
 from core.models import Job, Meeting
 
@@ -110,17 +111,23 @@ def enqueue(
             correlation_id=uuid.UUID(corr),
             max_attempts=MAX_ATTEMPTS.get(kind, 1),
         )
-        .on_conflict_do_nothing(index_elements=["kind", "idempotency_key"])
+        .on_conflict_do_nothing(constraint="uq_jobs_scope_key")
         .returning(Job.id)
     )
     created = session.execute(stmt).scalar_one_or_none()
     if created is not None:
         return created, True
+    # Uniqueness is scoped to brokerage, building and meeting (B1-002), so the existing row is always
+    # in the caller's own scope; another tenant's identical audio is never seen or revealed.
     existing = session.scalar(
-        select(Job.id).where(Job.kind == kind, Job.idempotency_key == idempotency_key)
+        select(Job.id).where(
+            Job.kind == kind, Job.idempotency_key == idempotency_key,
+            Job.brokerage_id.is_not_distinct_from(brokerage_id), Job.strata_id.is_not_distinct_from(strata_id),
+            Job.meeting_id.is_not_distinct_from(meeting_id),
+        )
     )
-    if existing is None:  # pragma: no cover - the row is invisible: different building
-        raise LookupError("job exists outside the caller's scope")
+    if existing is None:  # pragma: no cover - concurrent insert in a transaction not yet visible
+        raise Conflict("Processing is already being queued; check the status.", code="job_in_progress")
     return existing, False
 
 
