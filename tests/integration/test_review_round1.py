@@ -367,8 +367,11 @@ def test_approval_refused_without_any_quorum_item(world: World, as_user: Any) ->
     assert r.status_code == 409 and r.json()["error"]["code"] == "quorum_missing"
     # The database refuses it too, even bypassing core.approval.
     actor = Actor.user(world.priya, world.harbourline, "strata_manager")
-    with pytest.raises(DBAPIError, match="reviewed quorum item"), session_for(actor) as s:
+    with pytest.raises(DBAPIError, match="permission denied"), session_for(actor) as s:
         s.execute(text("UPDATE minutes_versions SET status = 'approved' WHERE meeting_id = :m"), {"m": m["id"]})
+    with pytest.raises(DBAPIError, match="reviewed quorum item"), session_for(actor) as s:
+        s.execute(text("SELECT app_approve_version(id, '\\x01') FROM minutes_versions WHERE meeting_id = :m"),
+                  {"m": m["id"]})
 
 
 def test_quorum_not_recorded_is_explicit_and_printed(world: World, as_user: Any) -> None:

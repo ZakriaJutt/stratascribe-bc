@@ -17,7 +17,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from core import audit, clock, jobs
@@ -83,7 +83,9 @@ def approve(session: Session, actor: Actor, meeting_id: uuid.UUID, body: dict[st
     session.execute(select(Meeting.id).where(Meeting.id == m.id).with_for_update())
     v = session.scalar(
         select(MinutesVersion).where(MinutesVersion.meeting_id == m.id)
-        .order_by(MinutesVersion.version.desc()).with_for_update()
+        # No row lock here: the app role has no UPDATE on minutes_versions (B1-012). The meeting row
+        # lock above serialises approvals; app_approve_version locks the version itself.
+        .order_by(MinutesVersion.version.desc())
     )
     if v is None:
         raise Conflict("There is no draft to approve.", code="no_draft")
@@ -131,10 +133,10 @@ def approve(session: Session, actor: Actor, meeting_id: uuid.UUID, body: dict[st
         session.refresh(i)  # read the generated final_outcome
     content_hash = hashlib.sha256(_canonical(items, cites)).digest()
     now = clock.now()
-    if v.reopened_from is not None:
-        session.execute(update(MinutesVersion).where(MinutesVersion.id == v.reopened_from)
-                        .values(status="superseded"))
-    v.status, v.content_hash = "approved", content_hash
+    # The only path to 'approved' (B1-012): the database function supersedes a reopened predecessor,
+    # sets status and hash, and the deferred triggers require the approval row and a reviewed quorum item.
+    session.execute(text("SELECT app_approve_version(:v, :h)"), {"v": v.id, "h": content_hash})
+    session.expire(v)
     approval = Approval(id=uuid7(), brokerage_id=m.brokerage_id, strata_id=m.strata_id, minutes_version_id=v.id,
                         approved_by=actor.user_id, approved_at=now, content_hash=content_hash,
                         attestation_text_version=body["attestation_text_version"])
