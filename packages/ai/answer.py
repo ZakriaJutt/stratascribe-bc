@@ -39,6 +39,28 @@ class AnswerResult:
     closest: list[ClauseHit] = field(default_factory=list)
 
 
+# A quote counts as a citation only if it is a meaningful verbatim span of the clause (B1-004):
+# at least MIN_QUOTE_CHARS characters and MIN_QUOTE_WORDS words, found in the clause text and starting
+# and ending on word boundaries. The database trigger applies the same rule (app_quote_ok).
+MIN_QUOTE_CHARS = 20
+MIN_QUOTE_WORDS = 4
+
+
+def quote_ok(body: str, quote: str) -> bool:
+    q = quote.strip()
+    if q != quote or len(q) < MIN_QUOTE_CHARS or len(q.split()) < MIN_QUOTE_WORDS:
+        return False
+    start = body.find(q)
+    while start != -1:
+        end = start + len(q)
+        before_ok = start == 0 or not body[start - 1].isalnum()
+        after_ok = end == len(body) or not body[end].isalnum()
+        if before_ok and after_ok:
+            return True
+        start = body.find(q, start + 1)
+    return False
+
+
 def validate_citations(raw: list[dict[str, Any]], allowed: dict[uuid.UUID, ClauseHit]) -> list[ValidCitation] | None:
     """All-or-nothing: one bad quote rejects the whole answer."""
     out: list[ValidCitation] = []
@@ -49,7 +71,7 @@ def validate_citations(raw: list[dict[str, Any]], allowed: dict[uuid.UUID, Claus
         except (KeyError, ValueError):
             return None
         clause = allowed.get(cid)
-        if clause is None or not quote.strip() or quote not in clause.body_text:
+        if clause is None or not quote_ok(clause.body_text, quote):
             return None
         out.append(ValidCitation(clause, quote))
     return out or None
